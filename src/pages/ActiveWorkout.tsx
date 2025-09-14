@@ -52,9 +52,9 @@ const ActiveWorkout = () => {
           .from('workout_sessions')
           .select('*')
           .eq('id', sessionId)
-          .single();
+          .maybeSingle();
 
-        if (sessionError) throw sessionError;
+        if (sessionError || !session) throw sessionError;
         setSessionName(session.name);
 
         // If this is from a routine, load the routine exercises
@@ -171,9 +171,9 @@ const ActiveWorkout = () => {
             order_index: i
           })
           .select()
-          .single();
+          .maybeSingle();
 
-        if (exerciseError) throw exerciseError;
+        if (exerciseError || !workoutExercise) throw exerciseError;
 
         // Save sets
         for (const set of exercise.sets) {
