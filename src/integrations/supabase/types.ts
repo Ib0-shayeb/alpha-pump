@@ -14,7 +14,64 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          activity_level: Database["public"]["Enums"]["activity_level"] | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          date_of_birth: string | null
+          display_name: string | null
+          fitness_goals: Database["public"]["Enums"]["fitness_goal"][] | null
+          gender: Database["public"]["Enums"]["gender_type"] | null
+          height: number | null
+          id: string
+          preferred_units: Database["public"]["Enums"]["unit_preference"] | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          weight: number | null
+        }
+        Insert: {
+          activity_level?: Database["public"]["Enums"]["activity_level"] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          display_name?: string | null
+          fitness_goals?: Database["public"]["Enums"]["fitness_goal"][] | null
+          gender?: Database["public"]["Enums"]["gender_type"] | null
+          height?: number | null
+          id?: string
+          preferred_units?:
+            | Database["public"]["Enums"]["unit_preference"]
+            | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          weight?: number | null
+        }
+        Update: {
+          activity_level?: Database["public"]["Enums"]["activity_level"] | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          display_name?: string | null
+          fitness_goals?: Database["public"]["Enums"]["fitness_goal"][] | null
+          gender?: Database["public"]["Enums"]["gender_type"] | null
+          height?: number | null
+          id?: string
+          preferred_units?:
+            | Database["public"]["Enums"]["unit_preference"]
+            | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +80,21 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      activity_level:
+        | "sedentary"
+        | "lightly_active"
+        | "moderately_active"
+        | "very_active"
+        | "extremely_active"
+      fitness_goal:
+        | "weight_loss"
+        | "muscle_gain"
+        | "endurance"
+        | "strength"
+        | "general_fitness"
+        | "maintenance"
+      gender_type: "male" | "female" | "other" | "prefer_not_to_say"
+      unit_preference: "metric" | "imperial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +221,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_level: [
+        "sedentary",
+        "lightly_active",
+        "moderately_active",
+        "very_active",
+        "extremely_active",
+      ],
+      fitness_goal: [
+        "weight_loss",
+        "muscle_gain",
+        "endurance",
+        "strength",
+        "general_fitness",
+        "maintenance",
+      ],
+      gender_type: ["male", "female", "other", "prefer_not_to_say"],
+      unit_preference: ["metric", "imperial"],
+    },
   },
 } as const
