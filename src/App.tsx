@@ -15,28 +15,36 @@ import AuthWrapper from "./components/AuthWrapper";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
-          <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
-          <Route path="/routines" element={<AuthWrapper><WorkoutRoutines /></AuthWrapper>} />
-          <Route path="/routines/create" element={<AuthWrapper><CreateRoutine /></AuthWrapper>} />
-          <Route path="/start-workout" element={<AuthWrapper><StartWorkout /></AuthWrapper>} />
-          <Route path="/custom-workout" element={<AuthWrapper><CustomWorkout /></AuthWrapper>} />
-          <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
-          <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const AppContent = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+        <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
+        <Route path="/routines" element={<AuthWrapper><WorkoutRoutines /></AuthWrapper>} />
+        <Route path="/routines/create" element={<AuthWrapper><CreateRoutine /></AuthWrapper>} />
+        <Route path="/start-workout" element={<AuthWrapper><StartWorkout /></AuthWrapper>} />
+        <Route path="/custom-workout" element={<AuthWrapper><CustomWorkout /></AuthWrapper>} />
+        <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+        <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppContent />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
