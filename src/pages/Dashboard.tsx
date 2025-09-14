@@ -21,10 +21,12 @@ const Dashboard = () => {
           <p className="text-muted-foreground mb-4">
             Ready to crush your workout goals today?
           </p>
-          <Button className="bg-gradient-primary hover:shadow-primary">
-            <Plus size={16} className="mr-2" />
-            Start Workout
-          </Button>
+          <Link to="/start-workout">
+            <Button className="bg-gradient-primary hover:shadow-primary">
+              <Plus size={16} className="mr-2" />
+              Start Workout
+            </Button>
+          </Link>
         </div>
 
         {/* Stats Grid */}

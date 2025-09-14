@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Dumbbell, Calendar, Trophy, User } from "lucide-react";
+import { Dumbbell, Calendar, Trophy, User, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   { name: "Dashboard", href: "/", icon: Dumbbell },
@@ -11,6 +13,7 @@ const navigationItems = [
 
 export const Navigation = () => {
   const location = useLocation();
+  const { signOut } = useAuth();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
@@ -35,6 +38,15 @@ export const Navigation = () => {
             </Link>
           );
         })}
+        <Button
+          onClick={signOut}
+          variant="ghost"
+          size="sm"
+          className="flex flex-col items-center py-2 px-3 text-muted-foreground hover:text-foreground"
+        >
+          <LogOut size={20} />
+          <span className="text-xs mt-1">Logout</span>
+        </Button>
       </div>
     </nav>
   );

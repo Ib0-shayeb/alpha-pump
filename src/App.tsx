@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Exercises from "./pages/Exercises";
+import Auth from "./pages/Auth";
+import CreateRoutine from "./pages/CreateRoutine";
+import StartWorkout from "./pages/StartWorkout";
 import NotFound from "./pages/NotFound";
+import AuthWrapper from "./components/AuthWrapper";
 
 const queryClient = new QueryClient();
 
@@ -16,11 +20,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/exercises" element={<Exercises />} />
-          <Route path="/routines" element={<Dashboard />} />
-          <Route path="/workouts" element={<Dashboard />} />
-          <Route path="/profile" element={<Dashboard />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+          <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
+          <Route path="/routines" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+          <Route path="/routines/create" element={<AuthWrapper><CreateRoutine /></AuthWrapper>} />
+          <Route path="/start-workout" element={<AuthWrapper><StartWorkout /></AuthWrapper>} />
+          <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+          <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
