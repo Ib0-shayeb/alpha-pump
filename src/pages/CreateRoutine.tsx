@@ -18,9 +18,10 @@ interface RoutineDay {
   description: string;
   exercises: Array<{
     name: string;
-    sets: number;
-    reps: string;
-    weight_suggestion: string;
+    sets: Array<{
+      reps: string;
+      weight_suggestion: string;
+    }>;
     notes: string;
   }>;
 }
@@ -124,9 +125,9 @@ const CreateRoutine = () => {
             .insert({
               routine_day_id: routineDay.id,
               exercise_name: exercise.name,
-              sets: exercise.sets,
-              reps: exercise.reps,
-              weight_suggestion: exercise.weight_suggestion || null,
+              sets: exercise.sets.length,
+              reps: exercise.sets.map(set => set.reps).join(', '),
+              weight_suggestion: exercise.sets.map(set => set.weight_suggestion).join(', '),
               notes: exercise.notes || null,
               order_index: j
             });
@@ -290,9 +291,11 @@ const CreateRoutine = () => {
                         ...editingDay,
                         exercises: [...editingDay.exercises, {
                           name: '',
-                          sets: 3,
-                          reps: '8-12',
-                          weight_suggestion: '',
+                          sets: [
+                            { reps: '8-12', weight_suggestion: '' },
+                            { reps: '8-12', weight_suggestion: '' },
+                            { reps: '8-12', weight_suggestion: '' }
+                          ],
                           notes: ''
                         }]
                       })}
@@ -327,44 +330,64 @@ const CreateRoutine = () => {
                             <Trash2 size={14} />
                           </Button>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
                             <Label className="text-xs">Sets</Label>
-                            <Input
-                              type="number"
-                              value={exercise.sets}
-                              onChange={(e) => {
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
                                 const updatedExercises = [...editingDay.exercises];
-                                updatedExercises[exerciseIndex].sets = parseInt(e.target.value) || 0;
+                                updatedExercises[exerciseIndex].sets.push({ reps: '8-12', weight_suggestion: '' });
                                 setEditingDay({...editingDay, exercises: updatedExercises});
                               }}
-                              min="1"
-                            />
+                            >
+                              <Plus size={12} className="mr-1" />
+                              Add Set
+                            </Button>
                           </div>
-                          <div>
-                            <Label className="text-xs">Reps</Label>
-                            <Input
-                              value={exercise.reps}
-                              onChange={(e) => {
-                                const updatedExercises = [...editingDay.exercises];
-                                updatedExercises[exerciseIndex].reps = e.target.value;
-                                setEditingDay({...editingDay, exercises: updatedExercises});
-                              }}
-                              placeholder="8-12"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Weight</Label>
-                            <Input
-                              value={exercise.weight_suggestion}
-                              onChange={(e) => {
-                                const updatedExercises = [...editingDay.exercises];
-                                updatedExercises[exerciseIndex].weight_suggestion = e.target.value;
-                                setEditingDay({...editingDay, exercises: updatedExercises});
-                              }}
-                              placeholder="60kg"
-                            />
-                          </div>
+                          {exercise.sets.map((set, setIndex) => (
+                            <div key={setIndex} className="flex items-center gap-2 p-2 bg-muted/30 rounded">
+                              <span className="text-xs text-muted-foreground w-8">#{setIndex + 1}</span>
+                              <div className="flex-1">
+                                <Input
+                                  value={set.reps}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...editingDay.exercises];
+                                    updatedExercises[exerciseIndex].sets[setIndex].reps = e.target.value;
+                                    setEditingDay({...editingDay, exercises: updatedExercises});
+                                  }}
+                                  placeholder="8-12"
+                                  className="text-xs"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <Input
+                                  value={set.weight_suggestion}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...editingDay.exercises];
+                                    updatedExercises[exerciseIndex].sets[setIndex].weight_suggestion = e.target.value;
+                                    setEditingDay({...editingDay, exercises: updatedExercises});
+                                  }}
+                                  placeholder="60kg"
+                                  className="text-xs"
+                                />
+                              </div>
+                              {exercise.sets.length > 1 && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const updatedExercises = [...editingDay.exercises];
+                                    updatedExercises[exerciseIndex].sets = updatedExercises[exerciseIndex].sets.filter((_, i) => i !== setIndex);
+                                    setEditingDay({...editingDay, exercises: updatedExercises});
+                                  }}
+                                >
+                                  <Trash2 size={12} />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
                         </div>
                         <div>
                           <Label className="text-xs">Notes (Optional)</Label>
