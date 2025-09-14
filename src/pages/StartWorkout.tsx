@@ -94,8 +94,8 @@ const StartWorkout = () => {
 
       if (error) throw error;
       
-      // Navigate to custom workout with pre-populated exercises
-      window.location.href = `/custom-workout?sessionId=${session.id}&routineDay=${todaysRoutine.day_id}`;
+      // Navigate to active workout with routine exercises
+      window.location.href = `/active-workout?sessionId=${session.id}&routineDay=${todaysRoutine.day_id}`;
     } catch (error) {
       console.error('Error starting workout:', error);
     }
