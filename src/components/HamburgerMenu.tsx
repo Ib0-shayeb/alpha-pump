@@ -8,9 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface HamburgerMenuProps {
   unreadCount?: number;
+  incompleteProfile?: boolean;
 }
 
-export const HamburgerMenu = ({ unreadCount = 0 }: HamburgerMenuProps) => {
+export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: HamburgerMenuProps) => {
   const [open, setOpen] = useState(false);
   const { user, signOut } = useAuth();
   
@@ -68,22 +69,39 @@ export const HamburgerMenu = ({ unreadCount = 0 }: HamburgerMenuProps) => {
         </div>
         <nav className="space-y-2">
           {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center space-x-3">
-                <item.icon size={20} className="text-muted-foreground" />
-                <span>{item.label}</span>
+            incompleteProfile ? (
+              <div
+                key={item.href}
+                className="flex items-center justify-between p-3 rounded-lg opacity-50 cursor-not-allowed"
+              >
+                <div className="flex items-center space-x-3">
+                  <item.icon size={20} className="text-muted-foreground" />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </Badge>
+                )}
               </div>
-              {item.badge && (
-                <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
-                  {item.badge > 9 ? "9+" : item.badge}
-                </Badge>
-              )}
-            </Link>
+            ) : (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => setOpen(false)}
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <item.icon size={20} className="text-muted-foreground" />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </Badge>
+                )}
+              </Link>
+            )
           ))}
           
           <div className="pt-4 mt-4 border-t border-border">

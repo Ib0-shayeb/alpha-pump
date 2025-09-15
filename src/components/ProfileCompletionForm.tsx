@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle } from "lucide-react";
+import { HamburgerMenu } from "@/components/HamburgerMenu";
 
 const profileSchema = z.object({
   display_name: z.string().min(1, "Display name is required"),
@@ -93,13 +94,20 @@ export const ProfileCompletionForm = ({ onComplete }: ProfileCompletionFormProps
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl p-6">
-        <div className="text-center mb-6">
-          <UserCircle size={48} className="mx-auto mb-4 text-primary" />
-          <h2 className="text-2xl font-bold">Complete Your Profile</h2>
-          <p className="text-muted-foreground">Help us personalize your fitness experience</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <header className="flex items-center justify-between p-4 border-b">
+        <HamburgerMenu incompleteProfile={true} />
+        <h1 className="text-lg font-semibold">Complete Profile</h1>
+        <div className="w-10" /> {/* Spacer for centering */}
+      </header>
+      
+      <div className="flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl p-6">
+          <div className="text-center mb-6">
+            <UserCircle size={48} className="mx-auto mb-4 text-primary" />
+            <h2 className="text-2xl font-bold">Complete Your Profile</h2>
+            <p className="text-muted-foreground">Help us personalize your fitness experience</p>
+          </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -316,6 +324,7 @@ export const ProfileCompletionForm = ({ onComplete }: ProfileCompletionFormProps
           </form>
         </Form>
       </Card>
+      </div>
     </div>
   );
 };
