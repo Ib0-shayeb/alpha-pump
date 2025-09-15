@@ -158,11 +158,19 @@ const WorkoutRoutines = () => {
     if (!selectedRoutineForActivation || !user) return;
 
     try {
+      const today = new Date().toISOString().split('T')[0];
+
       // Deactivate all other routines first
       await supabase
         .from('workout_routines')
         .update({ is_active: false })
         .eq('user_id', user.id);
+
+      // Deactivate all existing assignments
+      await supabase
+        .from('client_routine_assignments')
+        .update({ is_active: false })
+        .eq('client_id', user.id);
 
       // Activate this routine
       const { error: routineError } = await supabase
@@ -172,17 +180,42 @@ const WorkoutRoutines = () => {
 
       if (routineError) throw routineError;
 
-      // Create a client routine assignment
-      const { error: assignmentError } = await supabase
+      // Check if assignment already exists for today
+      const { data: existingAssignment, error: checkError } = await supabase
         .from('client_routine_assignments')
-        .insert({
-          client_id: user.id,
-          routine_id: selectedRoutineForActivation.id,
-          plan_type: planType,
-          start_date: new Date().toISOString().split('T')[0]
-        });
+        .select('id')
+        .eq('client_id', user.id)
+        .eq('routine_id', selectedRoutineForActivation.id)
+        .eq('start_date', today)
+        .maybeSingle();
 
-      if (assignmentError) throw assignmentError;
+      if (checkError) throw checkError;
+
+      if (existingAssignment) {
+        // Update existing assignment
+        const { error: updateError } = await supabase
+          .from('client_routine_assignments')
+          .update({
+            plan_type: planType,
+            is_active: true
+          })
+          .eq('id', existingAssignment.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new assignment
+        const { error: assignmentError } = await supabase
+          .from('client_routine_assignments')
+          .insert({
+            client_id: user.id,
+            routine_id: selectedRoutineForActivation.id,
+            plan_type: planType,
+            start_date: today,
+            is_active: true
+          });
+
+        if (assignmentError) throw assignmentError;
+      }
 
       await fetchRoutines();
       
