@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home } from "lucide-react";
+import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ interface HamburgerMenuProps {
 
 export const HamburgerMenu = ({ unreadCount = 0 }: HamburgerMenuProps) => {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   
   // Get user role from user metadata, default to 'client'
   const userRole = user?.user_metadata?.role || 'client';
@@ -85,6 +85,20 @@ export const HamburgerMenu = ({ unreadCount = 0 }: HamburgerMenuProps) => {
               )}
             </Link>
           ))}
+          
+          <div className="pt-4 mt-4 border-t border-border">
+            <Button
+              onClick={() => {
+                signOut();
+                setOpen(false);
+              }}
+              variant="ghost"
+              className="w-full justify-start p-3 h-auto text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              <LogOut size={20} className="mr-3" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
         </nav>
       </SheetContent>
     </Sheet>
