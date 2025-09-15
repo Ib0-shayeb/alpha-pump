@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Save, ArrowLeft, Edit, Trash2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,7 @@ const CreateRoutine = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const addDay = () => {
     const newDay: RoutineDay = {
@@ -141,7 +142,8 @@ const CreateRoutine = () => {
         description: `Routine ${isDraft ? 'saved as draft' : 'created'} successfully!`
       });
 
-      navigate('/routines');
+      const returnTo = searchParams.get('returnTo');
+      navigate(returnTo || '/routines');
     } catch (error) {
       console.error('Error saving routine:', error);
       toast({

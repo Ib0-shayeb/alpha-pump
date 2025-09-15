@@ -378,7 +378,7 @@ export const ClientDetails = () => {
                       <Button 
                         variant="link" 
                         size="sm" 
-                        onClick={() => navigate('/routines/create')}
+                        onClick={() => navigate(`/routines/create?returnTo=/trainer/client/${clientId}`)}
                         className="mt-2"
                       >
                         Create a routine first
