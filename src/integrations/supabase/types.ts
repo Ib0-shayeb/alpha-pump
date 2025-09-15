@@ -63,6 +63,7 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           display_name: string | null
+          email: string | null
           fitness_goals: Database["public"]["Enums"]["fitness_goal"][] | null
           gender: Database["public"]["Enums"]["gender_type"] | null
           height: number | null
@@ -81,6 +82,7 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           display_name?: string | null
+          email?: string | null
           fitness_goals?: Database["public"]["Enums"]["fitness_goal"][] | null
           gender?: Database["public"]["Enums"]["gender_type"] | null
           height?: number | null
@@ -101,6 +103,7 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           display_name?: string | null
+          email?: string | null
           fitness_goals?: Database["public"]["Enums"]["fitness_goal"][] | null
           gender?: Database["public"]["Enums"]["gender_type"] | null
           height?: number | null

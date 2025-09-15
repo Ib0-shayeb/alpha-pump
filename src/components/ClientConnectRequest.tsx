@@ -27,10 +27,10 @@ export const ClientConnectRequest = () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name, username')
+        .select('user_id, display_name, username, email')
         .eq('role', 'trainer')
         .neq('user_id', user?.id)
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
         .limit(10);
 
       if (error) throw error;
@@ -102,7 +102,7 @@ export const ClientConnectRequest = () => {
       <div className="space-y-4">
         <div className="flex gap-2">
           <Input
-            placeholder="Search trainers by username or name..."
+            placeholder="Search trainers by username, name, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && searchTrainers()}

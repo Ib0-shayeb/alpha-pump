@@ -84,9 +84,9 @@ export const TrainerView = () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name, username')
+        .select('user_id, display_name, username, email')
         .neq('user_id', user?.id)
-        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+        .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
         .limit(10);
 
       if (error) throw error;
@@ -222,7 +222,7 @@ export const TrainerView = () => {
         <TabsContent value="search" className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Search by username or name..."
+              placeholder="Search by username, name, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
