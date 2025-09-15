@@ -350,9 +350,23 @@ export const ClientDetails = () => {
                   )}
                 </div>
               </div>
-              <Badge variant={client.status === 'accepted' ? 'default' : 'secondary'}>
-                {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={client.status === 'accepted' ? 'default' : 'secondary'}>
+                  {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                </Badge>
+                
+                {/* Quick Actions */}
+                {client.status === 'accepted' && (
+                  <Button 
+                    onClick={handleOpenRoutineDialog}
+                    size="sm"
+                    className="ml-2"
+                  >
+                    <Dumbbell size={14} className="mr-1" />
+                    Assign Routine
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -470,16 +484,10 @@ export const ClientDetails = () => {
           </Card>
         )}
 
-        {/* Actions */}
+        {/* Additional Actions */}
         {client.status === 'accepted' && (
           <div className="flex gap-3">
             <Dialog open={isRoutineDialogOpen} onOpenChange={setIsRoutineDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenRoutineDialog} className="flex items-center gap-2">
-                  <Dumbbell size={16} />
-                  Assign Routine
-                </Button>
-              </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Assign Routine to {client.display_name}</DialogTitle>
@@ -536,15 +544,7 @@ export const ClientDetails = () => {
               </DialogContent>
             </Dialog>
 
-            <PlanTypeDialog
-              open={isPlanTypeDialogOpen}
-              onOpenChange={setIsPlanTypeDialogOpen}
-              routineId={selectedRoutineForAssignment?.id || ''}
-              routineName={selectedRoutineForAssignment?.name || ''}
-              onConfirm={handleConfirmPlanAssignment}
-            />
-
-            <Button
+            <Button 
               variant="destructive" 
               onClick={handleDisconnect}
               className="flex items-center gap-2"
@@ -554,6 +554,14 @@ export const ClientDetails = () => {
             </Button>
           </div>
         )}
+        
+        <PlanTypeDialog
+          open={isPlanTypeDialogOpen}
+          onOpenChange={setIsPlanTypeDialogOpen}
+          routineId={selectedRoutineForAssignment?.id || ''}
+          routineName={selectedRoutineForAssignment?.name || ''}
+          onConfirm={handleConfirmPlanAssignment}
+        />
       </div>
     </Layout>
   );
