@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Menu, X, Bell, Calendar, Plus, Dumbbell } from "lucide-react";
+import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 interface HamburgerMenuProps {
   unreadCount?: number;
@@ -11,8 +12,18 @@ interface HamburgerMenuProps {
 
 export const HamburgerMenu = ({ unreadCount = 0 }: HamburgerMenuProps) => {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  
+  // Get user role from user metadata, default to 'client'
+  const userRole = user?.user_metadata?.role || 'client';
+  const mainHref = userRole === 'trainer' ? '/trainer' : '/';
 
   const menuItems = [
+    {
+      label: "Main",
+      icon: Home,
+      href: mainHref,
+    },
     {
       label: "Inbox",
       icon: Bell,
