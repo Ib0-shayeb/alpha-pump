@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_routine_assignments: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          routine_id: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          routine_id: string
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          routine_id?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -384,6 +417,67 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_schedule: {
+        Row: {
+          assignment_id: string
+          client_id: string
+          created_at: string
+          id: string
+          is_completed: boolean
+          is_rest_day: boolean
+          routine_day_id: string | null
+          scheduled_date: string
+          was_skipped: boolean
+          workout_session_id: string | null
+        }
+        Insert: {
+          assignment_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          is_rest_day?: boolean
+          routine_day_id?: string | null
+          scheduled_date: string
+          was_skipped?: boolean
+          workout_session_id?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          is_rest_day?: boolean
+          routine_day_id?: string | null
+          scheduled_date?: string
+          was_skipped?: boolean
+          workout_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_schedule_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "client_routine_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_schedule_routine_day_id_fkey"
+            columns: ["routine_day_id"]
+            isOneToOne: false
+            referencedRelation: "routine_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_schedule_workout_session_id_fkey"
+            columns: ["workout_session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workout_sessions: {
         Row: {
           created_at: string
@@ -487,6 +581,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_workout_schedule: {
+        Args: {
+          _assignment_id: string
+          _client_id: string
+          _days_to_generate?: number
+          _routine_id: string
+          _start_date: string
+        }
+        Returns: undefined
+      }
       is_accepted_trainer: {
         Args: { _client_id: string; _trainer_id: string }
         Returns: boolean
@@ -507,6 +611,7 @@ export type Database = {
         | "general_fitness"
         | "maintenance"
       gender_type: "male" | "female" | "other" | "prefer_not_to_say"
+      plan_type: "strict" | "flexible"
       unit_preference: "metric" | "imperial"
     }
     CompositeTypes: {
@@ -651,6 +756,7 @@ export const Constants = {
         "maintenance",
       ],
       gender_type: ["male", "female", "other", "prefer_not_to_say"],
+      plan_type: ["strict", "flexible"],
       unit_preference: ["metric", "imperial"],
     },
   },

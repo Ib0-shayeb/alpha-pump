@@ -9,6 +9,8 @@ import { ArrowLeft, UserX, Dumbbell, Calendar, Target, User } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { WorkoutCalendar } from "@/components/WorkoutCalendar";
+import { PlanTypeDialog } from "@/components/PlanTypeDialog";
 
 interface ClientProfile {
   user_id: string;
@@ -58,6 +60,8 @@ export const ClientDetails = () => {
   const [routinesLoading, setRoutinesLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isRoutineDialogOpen, setIsRoutineDialogOpen] = useState(false);
+  const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
+  const [selectedRoutineForAssignment, setSelectedRoutineForAssignment] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     fetchClientDetails();
@@ -212,7 +216,13 @@ export const ClientDetails = () => {
   };
 
   const handleAssignRoutine = async (routineId: string, routineName: string) => {
-    if (!clientId || !user) return;
+    setSelectedRoutineForAssignment({ id: routineId, name: routineName });
+    setIsRoutineDialogOpen(false);
+    setIsPlanTypeDialogOpen(true);
+  };
+
+  const handleConfirmPlanAssignment = async (planType: 'strict' | 'flexible') => {
+    if (!clientId || !user || !selectedRoutineForAssignment) return;
 
     try {
       const { error } = await supabase
@@ -220,8 +230,8 @@ export const ClientDetails = () => {
         .insert({
           trainer_id: user.id,
           client_id: clientId,
-          routine_id: routineId,
-          message: `Your trainer has recommended the "${routineName}" routine for you.`,
+          routine_id: selectedRoutineForAssignment.id,
+          message: `Your trainer has recommended the "${selectedRoutineForAssignment.name}" routine with a ${planType} plan.`,
           status: 'pending'
         });
 
@@ -234,16 +244,21 @@ export const ClientDetails = () => {
           user_id: clientId,
           type: 'routine_recommendation',
           title: 'New Routine Recommendation',
-          message: `Your trainer has recommended a new routine: ${routineName}`,
-          data: { routine_id: routineId, trainer_id: user.id }
+          message: `Your trainer has recommended a new routine: ${selectedRoutineForAssignment.name}`,
+          data: { 
+            routine_id: selectedRoutineForAssignment.id, 
+            trainer_id: user.id,
+            plan_type: planType
+          }
         });
 
       toast({
         title: "Routine Assigned",
-        description: `Successfully recommended "${routineName}" to ${client?.display_name}`,
+        description: `Successfully recommended "${selectedRoutineForAssignment.name}" with ${planType} plan to ${client?.display_name}`,
       });
       
-      setIsRoutineDialogOpen(false);
+      setIsPlanTypeDialogOpen(false);
+      setSelectedRoutineForAssignment(null);
     } catch (error: any) {
       console.error('Error assigning routine:', error);
       toast({
@@ -395,6 +410,12 @@ export const ClientDetails = () => {
           </CardContent>
         </Card>
 
+        {/* Workout Calendar */}
+        <WorkoutCalendar 
+          clientId={clientId!} 
+          canSeeWorkoutHistory={client.trainer_can_see_workout_history || false}
+        />
+
         {/* Workout History */}
         {client.trainer_can_see_workout_history && client.status === 'accepted' && (
           <Card>
@@ -515,7 +536,15 @@ export const ClientDetails = () => {
               </DialogContent>
             </Dialog>
 
-            <Button 
+            <PlanTypeDialog
+              open={isPlanTypeDialogOpen}
+              onOpenChange={setIsPlanTypeDialogOpen}
+              routineId={selectedRoutineForAssignment?.id || ''}
+              routineName={selectedRoutineForAssignment?.name || ''}
+              onConfirm={handleConfirmPlanAssignment}
+            />
+
+            <Button
               variant="destructive" 
               onClick={handleDisconnect}
               className="flex items-center gap-2"
