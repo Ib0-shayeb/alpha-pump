@@ -119,6 +119,7 @@ export const Inbox = () => {
               };
             }
 
+            // Get trainer info for routine recommendations
             if (notificationData?.trainer_id) {
               const { data: trainer } = await supabase
                 .from('profiles')
