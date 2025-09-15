@@ -203,13 +203,49 @@ export const Inbox = () => {
   };
 
   const handleRoutineRecommendation = async (notificationId: string, recommendationId: string, accept: boolean) => {
+    const notification = notifications.find(n => n.id === notificationId);
+    
+    if (!notification || !notification.data) {
+      toast({
+        title: "Error",
+        description: "Notification data not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If no recommendationId provided, try to find it
+    let actualRecommendationId = recommendationId;
+    if (!actualRecommendationId) {
+      const { data: recommendation } = await supabase
+        .from('routine_recommendations')
+        .select('id')
+        .eq('routine_id', notification.data.routine_id)
+        .eq('trainer_id', notification.data.trainer_id)
+        .eq('client_id', user?.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      
+      if (recommendation) {
+        actualRecommendationId = recommendation.id;
+      } else {
+        toast({
+          title: "Error",
+          description: "Recommendation not found",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (!accept) {
       // Handle decline directly
       try {
         const { error } = await supabase
           .from('routine_recommendations')
           .update({ status: 'declined' })
-          .eq('id', recommendationId);
+          .eq('id', actualRecommendationId);
 
         if (error) throw error;
 
@@ -232,11 +268,10 @@ export const Inbox = () => {
     }
 
     // For accept, show plan type dialog
-    const notification = notifications.find(n => n.id === notificationId);
     if (notification && notification.routine) {
       setSelectedRecommendation({
         notificationId,
-        recommendationId,
+        recommendationId: actualRecommendationId,
         routineId: notification.data?.routine_id || '',
         routineName: notification.routine.name
       });
