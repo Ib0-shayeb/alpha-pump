@@ -11,6 +11,7 @@ import StartWorkout from "./pages/StartWorkout";
 import CustomWorkout from "./pages/CustomWorkout";
 import ActiveWorkout from "./pages/ActiveWorkout";
 import WorkoutRoutines from "./pages/WorkoutRoutines";
+import { Inbox } from "./pages/Inbox";
 import NotFound from "./pages/NotFound";
 import AuthWrapper from "./components/AuthWrapper";
 
@@ -28,6 +29,7 @@ const AppContent = () => {
         <Route path="/start-workout" element={<AuthWrapper><StartWorkout /></AuthWrapper>} />
         <Route path="/custom-workout" element={<AuthWrapper><CustomWorkout /></AuthWrapper>} />
         <Route path="/active-workout" element={<AuthWrapper><ActiveWorkout /></AuthWrapper>} />
+        <Route path="/inbox" element={<AuthWrapper><Inbox /></AuthWrapper>} />
         <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

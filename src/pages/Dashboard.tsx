@@ -1,11 +1,13 @@
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Dumbbell, Calendar, Trophy, Target } from "lucide-react";
+import { Plus, Dumbbell, Calendar, Trophy, Target, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { ClientConnectRequest } from "@/components/ClientConnectRequest";
+import { TrainerView } from "./TrainerView";
 
 interface RecentWorkout {
   id: string;
@@ -23,7 +25,24 @@ interface RecentWorkout {
 const Dashboard = () => {
   const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<'client' | 'trainer'>('client');
   const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setUserRole((profile?.role as 'client' | 'trainer') || 'client');
+    };
+
+    fetchUserRole();
+  }, [user]);
 
   useEffect(() => {
     const fetchRecentActivity = async () => {
@@ -219,6 +238,9 @@ const Dashboard = () => {
             </Card>
           )}
         </div>
+
+        {/* Trainer Connection for Clients */}
+        <ClientConnectRequest />
       </div>
     </Layout>
   );
