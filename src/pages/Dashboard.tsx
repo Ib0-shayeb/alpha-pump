@@ -190,6 +190,11 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Client Workout Calendar */}
+        {userRole === 'client' && (
+          <ClientWorkoutCalendar />
+        )}
+
         {/* Recent Activity */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Recent Activity</h3>
@@ -243,11 +248,6 @@ const Dashboard = () => {
 
         {/* Trainer Connection for Clients */}
         <ClientConnectRequest />
-        
-        {/* Client Workout Calendar */}
-        {userRole === 'client' && (
-          <ClientWorkoutCalendar />
-        )}
         
         {/* Privacy Settings for Clients */}
         {userRole === 'client' && <PrivacySettings />}
