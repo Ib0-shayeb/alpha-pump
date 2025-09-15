@@ -93,7 +93,7 @@ export const Inbox = () => {
             enriched.routine = routine || undefined;
             
             // Get recommendation_id by looking up the routine_recommendations table
-            const { data: recommendation } = await supabase
+            const { data: recommendation, error: recError } = await supabase
               .from('routine_recommendations')
               .select('id')
               .eq('routine_id', notificationData.routine_id)
@@ -101,13 +101,16 @@ export const Inbox = () => {
               .eq('client_id', user.id)
               .eq('status', 'pending')
               .order('created_at', { ascending: false })
-              .maybeSingle();
+              .limit(1)
+              .single();
             
-            if (recommendation) {
+            if (recommendation && !recError) {
               enriched.data = {
                 ...notificationData,
                 recommendation_id: recommendation.id
               };
+            } else if (recError) {
+              console.error('Error looking up recommendation:', recError);
             }
 
             // Get trainer info for routine recommendations
