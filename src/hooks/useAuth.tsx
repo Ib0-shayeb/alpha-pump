@@ -31,19 +31,18 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      // Clear local state first
+      // Clear local state immediately
       setSession(null);
       setUser(null);
       
-      // Then attempt to sign out from Supabase
-      await supabase.auth.signOut();
+      // Clear localStorage to ensure complete cleanup
+      localStorage.clear();
       
-      // Force navigation to auth page
+      // Force navigation to auth page immediately
       window.location.href = "/auth";
     } catch (error) {
       console.error("Sign out error:", error);
-      // Even if signOut fails, we've already cleared local state
-      // Force navigation regardless
+      // Force navigation regardless of any errors
       window.location.href = "/auth";
     }
   };
