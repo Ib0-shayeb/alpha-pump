@@ -9,6 +9,7 @@ import { Search, Users, UserPlus, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface Client {
   user_id: string;
@@ -33,6 +34,7 @@ export const TrainerView = () => {
   const [searching, setSearching] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchClients();
@@ -192,7 +194,11 @@ export const TrainerView = () => {
           ) : clients.length > 0 ? (
             <div className="space-y-3">
               {clients.map((client) => (
-                <Card key={client.user_id} className="p-4">
+                <Card 
+                  key={client.user_id} 
+                  className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => navigate(`/trainer/client/${client.user_id}`)}
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">{client.display_name}</h3>
@@ -200,11 +206,6 @@ export const TrainerView = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(client.status)}
-                      {client.status === 'accepted' && (
-                        <Button size="sm" variant="outline">
-                          Recommend Routine
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </Card>
