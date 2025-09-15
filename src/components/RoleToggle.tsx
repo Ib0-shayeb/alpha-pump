@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export const RoleToggle = () => {
   const [isTrainer, setIsTrainer] = useState(false);
@@ -12,6 +12,7 @@ export const RoleToggle = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -24,7 +25,27 @@ export const RoleToggle = () => {
           .eq('user_id', user.id)
           .maybeSingle();
         
-        setIsTrainer(profile?.role === 'trainer');
+        // Determine role based on current route if profile role doesn't match
+        const currentRouteIsTrainer = location.pathname === '/trainer';
+        const profileRole = profile?.role;
+        
+        if (currentRouteIsTrainer && profileRole !== 'trainer') {
+          // Update profile to match current route
+          await supabase
+            .from('profiles')
+            .update({ role: 'trainer' })
+            .eq('user_id', user.id);
+          setIsTrainer(true);
+        } else if (!currentRouteIsTrainer && profileRole === 'trainer') {
+          // Update profile to match current route
+          await supabase
+            .from('profiles')
+            .update({ role: 'client' })
+            .eq('user_id', user.id);
+          setIsTrainer(false);
+        } else {
+          setIsTrainer(profileRole === 'trainer');
+        }
       } catch (error) {
         console.error('Error fetching user role:', error);
       } finally {
@@ -33,7 +54,7 @@ export const RoleToggle = () => {
     };
 
     fetchUserRole();
-  }, [user]);
+  }, [user, location.pathname]);
 
   const toggleRole = async (checked: boolean) => {
     if (!user) return;
