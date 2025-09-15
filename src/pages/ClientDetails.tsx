@@ -39,6 +39,18 @@ interface WorkoutSession {
   exercise_count: number;
 }
 
+interface ActiveRoutine {
+  id: string;
+  routine_id: string;
+  plan_type: 'strict' | 'flexible';
+  start_date: string;
+  routine: {
+    name: string;
+    description?: string;
+    days_per_week: number;
+  };
+}
+
 interface WorkoutRoutine {
   id: string;
   name: string;
@@ -55,9 +67,11 @@ export const ClientDetails = () => {
   
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [routines, setRoutines] = useState<WorkoutRoutine[]>([]);
+  const [activeRoutines, setActiveRoutines] = useState<ActiveRoutine[]>([]);
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [routinesLoading, setRoutinesLoading] = useState(false);
+  const [activeRoutinesLoading, setActiveRoutinesLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isRoutineDialogOpen, setIsRoutineDialogOpen] = useState(false);
   const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
@@ -109,6 +123,9 @@ export const ClientDetails = () => {
         if (connection.profiles.trainer_can_see_workout_history) {
           fetchWorkoutHistory();
         }
+        
+        // Fetch active routines
+        fetchActiveRoutines();
       }
     } catch (error) {
       console.error('Error fetching client details:', error);
@@ -120,6 +137,51 @@ export const ClientDetails = () => {
       navigate('/trainer');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchActiveRoutines = async () => {
+    if (!clientId) return;
+
+    setActiveRoutinesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('client_routine_assignments')
+        .select(`
+          id,
+          routine_id,
+          plan_type,
+          start_date,
+          workout_routines (
+            name,
+            description,
+            days_per_week
+          )
+        `)
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedRoutines = data?.map(assignment => ({
+        id: assignment.id,
+        routine_id: assignment.routine_id,
+        plan_type: assignment.plan_type as 'strict' | 'flexible',
+        start_date: assignment.start_date,
+        routine: assignment.workout_routines
+      })).filter(assignment => assignment.routine) || [];
+
+      setActiveRoutines(formattedRoutines as ActiveRoutine[]);
+    } catch (error) {
+      console.error('Error fetching active routines:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load active routines",
+        variant: "destructive",
+      });
+    } finally {
+      setActiveRoutinesLoading(false);
     }
   };
 
@@ -419,6 +481,64 @@ export const ClientDetails = () => {
                 <p className="text-sm text-muted-foreground">
                   Some client information is private and not visible to trainers.
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Routines */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar size={20} />
+              Active Routines
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeRoutinesLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-20 bg-muted rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : activeRoutines.length > 0 ? (
+              <div className="space-y-3">
+                {activeRoutines.map((assignment) => (
+                  <div key={assignment.id} className="p-4 border rounded-lg bg-gradient-to-r from-primary/5 to-primary/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{assignment.routine.name}</h4>
+                          <Badge variant={assignment.plan_type === 'flexible' ? 'secondary' : 'default'}>
+                            {assignment.plan_type === 'flexible' ? 'Flexible Plan' : 'Strict Plan'}
+                          </Badge>
+                        </div>
+                        {assignment.routine.description && (
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {assignment.routine.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} />
+                            {assignment.routine.days_per_week} days/week
+                          </span>
+                          <span>
+                            Started: {new Date(assignment.start_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar size={32} className="mx-auto mb-2" />
+                <p>No active routines</p>
+                <p className="text-sm">Assign a routine to get this client started</p>
               </div>
             )}
           </CardContent>
