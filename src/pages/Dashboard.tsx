@@ -1,7 +1,8 @@
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Dumbbell, Calendar, Trophy, Target, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Dumbbell, Calendar, Trophy, Target, Users, Shield, SkipForward } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,9 +25,23 @@ interface RecentWorkout {
   }>;
 }
 
+interface ActiveRoutine {
+  id: string;
+  routine_id: string;
+  plan_type: 'strict' | 'flexible';
+  start_date: string;
+  routine: {
+    name: string;
+    description?: string;
+    days_per_week: number;
+  };
+}
+
 const Dashboard = () => {
   const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
+  const [activeRoutines, setActiveRoutines] = useState<ActiveRoutine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [routinesLoading, setRoutinesLoading] = useState(true);
   const [userRole, setUserRole] = useState<'client' | 'trainer'>('client');
   const { user } = useAuth();
 
@@ -43,8 +58,66 @@ const Dashboard = () => {
       setUserRole((profile?.role as 'client' | 'trainer') || 'client');
     };
 
+    const fetchActiveRoutines = async () => {
+      if (!user) return;
+
+      try {
+        // First get the assignments
+        const { data: assignments, error: assignmentsError } = await supabase
+          .from('client_routine_assignments')
+          .select('id, routine_id, plan_type, start_date')
+          .eq('client_id', user.id)
+          .eq('is_active', true)
+          .order('start_date', { ascending: false });
+
+        if (assignmentsError) throw assignmentsError;
+
+        if (!assignments || assignments.length === 0) {
+          setActiveRoutines([]);
+          return;
+        }
+
+        // Then get the routine details
+        const routineIds = assignments.map(a => a.routine_id);
+        const { data: routines, error: routinesError } = await supabase
+          .from('workout_routines')
+          .select('id, name, description, days_per_week')
+          .in('id', routineIds);
+
+        if (routinesError) throw routinesError;
+
+        // Combine the data
+        const formattedRoutines: ActiveRoutine[] = assignments.map(assignment => {
+          const routine = routines?.find(r => r.id === assignment.routine_id);
+          return {
+            id: assignment.id,
+            routine_id: assignment.routine_id,
+            plan_type: assignment.plan_type as 'strict' | 'flexible',
+            start_date: assignment.start_date,
+            routine: routine ? {
+              name: routine.name,
+              description: routine.description || undefined,
+              days_per_week: routine.days_per_week
+            } : {
+              name: 'Unknown Routine',
+              days_per_week: 0
+            }
+          };
+        }).filter(assignment => assignment.routine.name !== 'Unknown Routine');
+
+        setActiveRoutines(formattedRoutines);
+      } catch (error) {
+        console.error('Error fetching active routines:', error);
+      } finally {
+        setRoutinesLoading(false);
+      }
+    };
+
     fetchUserRole();
-  }, [user]);
+    if (userRole === 'client') {
+      fetchActiveRoutines();
+    }
+  }, [user, userRole]);
 
   useEffect(() => {
     const fetchRecentActivity = async () => {
@@ -107,7 +180,7 @@ const Dashboard = () => {
     { label: "Workouts This Week", value: "3", icon: Dumbbell, color: "text-primary" },
     { label: "Current Streak", value: "5 days", icon: Target, color: "text-workout-complete" },
     { label: "Total Workouts", value: "24", icon: Trophy, color: "text-accent" },
-    { label: "Active Routines", value: "2", icon: Calendar, color: "text-secondary-foreground" },
+    { label: "Active Routines", value: activeRoutines.length.toString(), icon: Calendar, color: "text-secondary-foreground" },
   ];
 
   return (
@@ -193,6 +266,70 @@ const Dashboard = () => {
         {/* Client Workout Calendar */}
         {userRole === 'client' && (
           <ClientWorkoutCalendar />
+        )}
+
+        {/* Active Routines for Clients */}
+        {userRole === 'client' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Active Routines</h3>
+            {routinesLoading ? (
+              <Card className="p-4 bg-gradient-card shadow-card border-border/50">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-3 bg-muted rounded w-2/3"></div>
+                </div>
+              </Card>
+            ) : activeRoutines.length > 0 ? (
+              <div className="space-y-3">
+                {activeRoutines.map((assignment) => (
+                  <Card key={assignment.id} className="p-4 bg-gradient-card shadow-card border-border/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{assignment.routine.name}</h4>
+                          <Badge variant={assignment.plan_type === 'flexible' ? 'secondary' : 'default'}>
+                            {assignment.plan_type === 'flexible' ? (
+                              <>
+                                <SkipForward size={12} className="mr-1" />
+                                Flexible Plan
+                              </>
+                            ) : (
+                              <>
+                                <Shield size={12} className="mr-1" />
+                                Strict Plan
+                              </>
+                            )}
+                          </Badge>
+                        </div>
+                        {assignment.routine.description && (
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {assignment.routine.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} />
+                            {assignment.routine.days_per_week} days/week
+                          </span>
+                          <span>
+                            Started: {new Date(assignment.start_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-4 bg-gradient-card shadow-card border-border/50">
+                <div className="text-center py-4">
+                  <Calendar size={32} className="mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-muted-foreground">No active routines</p>
+                  <p className="text-sm text-muted-foreground">Visit the routines page to activate a routine</p>
+                </div>
+              </Card>
+            )}
+          </div>
         )}
 
         {/* Recent Activity */}
