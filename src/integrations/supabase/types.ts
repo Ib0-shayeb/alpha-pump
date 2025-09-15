@@ -593,13 +593,22 @@ export type Database = {
     }
     Functions: {
       generate_workout_schedule: {
-        Args: {
-          _assignment_id: string
-          _client_id: string
-          _days_to_generate?: number
-          _routine_id: string
-          _start_date: string
-        }
+        Args:
+          | {
+              _assignment_id: string
+              _client_id: string
+              _days_to_generate?: number
+              _plan_type?: Database["public"]["Enums"]["plan_type"]
+              _routine_id: string
+              _start_date: string
+            }
+          | {
+              _assignment_id: string
+              _client_id: string
+              _days_to_generate?: number
+              _routine_id: string
+              _start_date: string
+            }
         Returns: undefined
       }
       is_accepted_trainer: {
