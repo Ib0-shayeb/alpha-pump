@@ -32,8 +32,8 @@ const AuthWrapper = ({ children }: AuthWrapperProps) => {
     return null;
   }
 
-  // Show profile completion form if profile is incomplete
-  if (!isComplete && location.pathname !== "/auth") {
+  // Show profile completion form if profile is incomplete (but not while still loading)
+  if (!profileLoading && !isComplete && location.pathname !== "/auth") {
     return <ProfileCompletionForm onComplete={markComplete} />;
   }
 
