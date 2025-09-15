@@ -118,11 +118,13 @@ export const Inbox = () => {
 
             // Get trainer info for routine recommendations
             if (notificationData?.trainer_id) {
-              const { data: trainer } = await supabase
+              console.log('Fetching trainer profile for ID:', notificationData.trainer_id);
+              const { data: trainer, error: trainerError } = await supabase
                 .from('profiles')
                 .select('display_name, username')
                 .eq('user_id', notificationData.trainer_id)
                 .maybeSingle();
+              console.log('Trainer fetch result:', { trainer, trainerError });
               enriched.trainer = trainer || undefined;
             }
           }
