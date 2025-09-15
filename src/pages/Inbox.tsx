@@ -11,7 +11,7 @@ import { PlanTypeDialog } from "@/components/PlanTypeDialog";
 
 interface Notification {
   id: string;
-  type: 'connection_request' | 'routine_recommendation' | 'connection_accepted';
+  type: 'connection_request' | 'routine_recommendation' | 'connection_accepted' | 'routine_accepted';
   title: string;
   message: string | null;
   data: {
@@ -251,6 +251,25 @@ export const Inbox = () => {
       await markAsRead(selectedRecommendation.notificationId);
       setNotifications(prev => prev.filter(n => n.id !== selectedRecommendation.notificationId));
 
+      // Create notification for trainer about accepted recommendation
+      const { error: trainerNotificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: (notifications.find(n => n.id === selectedRecommendation.notificationId)?.data as any)?.trainer_id,
+          type: 'routine_accepted',
+          title: 'Routine Accepted',
+          message: `Your routine recommendation "${selectedRecommendation.routineName}" was accepted`,
+          data: { 
+            client_id: user.id,
+            routine_id: selectedRecommendation.routineId,
+            plan_type: planType
+          }
+        });
+
+      if (trainerNotificationError) {
+        console.error('Error creating trainer notification:', trainerNotificationError);
+      }
+
       toast({
         title: "Routine accepted",
         description: `The routine has been added with ${planType} plan type`,
@@ -275,6 +294,8 @@ export const Inbox = () => {
       case 'routine_recommendation':
         return Calendar;
       case 'connection_accepted':
+        return Check;
+      case 'routine_accepted':
         return Check;
       default:
         return Bell;
@@ -349,9 +370,15 @@ export const Inbox = () => {
                         </div>
                       )}
                       
-                      {notification.type === 'connection_accepted' && notification.client && (
+                      {notification.type === 'connection_accepted' && (
                         <p className="text-sm text-muted-foreground mb-3">
-                          {notification.client.display_name} (@{notification.client.username}) accepted your connection request
+                          {notification.message}
+                        </p>
+                      )}
+                      
+                      {notification.type === 'routine_accepted' && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {notification.message}
                         </p>
                       )}
                       
@@ -399,6 +426,16 @@ export const Inbox = () => {
                       )}
                     
                     {notification.type === 'connection_accepted' && !notification.read && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => markAsRead(notification.id)}
+                      >
+                        Mark Read
+                      </Button>
+                    )}
+                    
+                    {notification.type === 'routine_accepted' && !notification.read && (
                       <Button 
                         size="sm" 
                         variant="outline"
