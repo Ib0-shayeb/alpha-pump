@@ -381,18 +381,19 @@ export const Inbox = () => {
                       
                       {notification.type === 'routine_recommendation' && (
                         <div className="mb-3">
-                          <p className="text-sm text-muted-foreground mb-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-sm text-muted-foreground">Recommended by:</span>
                             {notification.trainer ? (
                               <button 
                                 onClick={() => window.open(`/trainer/${notification.data?.trainer_id}`, '_blank')}
-                                className="text-primary hover:underline font-medium"
+                                className="text-primary hover:underline font-semibold"
                               >
-                                {notification.trainer.display_name}
+                                {notification.trainer.display_name || notification.trainer.username || 'Unknown Trainer'}
                               </button>
                             ) : (
-                              <span className="font-medium">A trainer</span>
-                            )} recommended a workout routine:
-                          </p>
+                              <span className="font-semibold text-muted-foreground">Loading trainer...</span>
+                            )}
+                          </div>
                           
                           {notification.routine ? (
                             <div className="bg-muted/50 p-3 rounded">
