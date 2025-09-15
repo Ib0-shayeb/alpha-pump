@@ -295,20 +295,6 @@ export const Inbox = () => {
 
       if (assignmentError) throw assignmentError;
 
-      // Generate workout schedule for the assignment
-      const { error: scheduleError } = await supabase.rpc('generate_workout_schedule', {
-        _assignment_id: assignmentData.id,
-        _client_id: user.id,
-        _routine_id: selectedRecommendation.routineId,
-        _start_date: new Date().toISOString().split('T')[0],
-        _plan_type: planType,
-        _days_to_generate: 30
-      });
-
-      if (scheduleError) {
-        console.error('Error generating workout schedule:', scheduleError);
-        // Don't throw here as the assignment was successful
-      }
 
       // Mark notification as read and remove it
       await markAsRead(selectedRecommendation.notificationId);

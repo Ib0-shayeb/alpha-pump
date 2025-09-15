@@ -1,111 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Moon, CheckCircle, XCircle, SkipForward, Play } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkoutSchedule, type ScheduleDay } from "@/hooks/useWorkoutSchedule";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isPast, addWeeks, subWeeks, isBefore } from "date-fns";
-
-interface ScheduleDay {
-  id: string;
-  assignment_id: string;
-  scheduled_date: string;
-  is_rest_day: boolean;
-  is_completed: boolean;
-  was_skipped: boolean;
-  routine_day?: {
-    name: string;
-    description?: string;
-  };
-  workout_session?: {
-    name: string;
-  };
-  assignment?: {
-    plan_type: 'strict' | 'flexible';
-  };
-}
 
 interface ClientWorkoutCalendarProps {
   className?: string;
 }
 
 export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps) => {
-  const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [selectedSkipDay, setSelectedSkipDay] = useState<ScheduleDay | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const { schedule, loading, skipDay } = useWorkoutSchedule(user?.id || '', currentWeek);
 
-  useEffect(() => {
-    if (user) {
-      fetchWeekSchedule();
-    }
-  }, [user, currentWeek]);
-
-  const fetchWeekSchedule = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday
-      const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 }); // Sunday
-
-      const { data, error } = await supabase
-        .from('workout_schedule')
-        .select(`
-          id,
-          assignment_id,
-          scheduled_date,
-          is_rest_day,
-          is_completed,
-          was_skipped,
-          routine_days!inner (
-            name,
-            description
-          ),
-          workout_sessions (
-            name
-          ),
-          client_routine_assignments!inner (
-            plan_type
-          )
-        `)
-        .eq('client_id', user.id)
-        .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'))
-        .lte('scheduled_date', format(weekEnd, 'yyyy-MM-dd'))
-        .order('scheduled_date');
-
-      if (error) throw error;
-
-      const formattedSchedule = data?.map(item => ({
-        id: item.id,
-        assignment_id: item.assignment_id,
-        scheduled_date: item.scheduled_date,
-        is_rest_day: item.is_rest_day,
-        is_completed: item.is_completed,
-        was_skipped: item.was_skipped,
-        routine_day: item.routine_days,
-        workout_session: item.workout_sessions?.[0],
-        assignment: item.client_routine_assignments
-      })) || [];
-
-      setSchedule(formattedSchedule);
-    } catch (error) {
-      console.error('Error fetching schedule:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load workout schedule",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -149,26 +65,17 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
     );
   };
 
-  const handleSkipDay = async () => {
+  const handleSkipDay = () => {
     if (!selectedSkipDay || !user) return;
 
     try {
-      // Call the skip function
-      const { error } = await supabase.rpc('skip_flexible_plan_day', {
-        _client_id: user.id,
-        _assignment_id: selectedSkipDay.assignment_id,
-        _skip_date: selectedSkipDay.scheduled_date
-      });
-
-      if (error) throw error;
+      skipDay(selectedSkipDay.scheduled_date, selectedSkipDay.assignment_id);
 
       toast({
         title: "Day skipped",
         description: "Workout day has been skipped and schedule adjusted",
       });
 
-      // Refresh the schedule
-      fetchWeekSchedule();
       setSkipDialogOpen(false);
       setSelectedSkipDay(null);
     } catch (error: any) {

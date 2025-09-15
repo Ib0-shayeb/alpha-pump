@@ -1,26 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Moon, CheckCircle, XCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useWorkoutSchedule, type ScheduleDay } from "@/hooks/useWorkoutSchedule";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isPast, addWeeks, subWeeks } from "date-fns";
-
-interface ScheduleDay {
-  id: string;
-  scheduled_date: string;
-  is_rest_day: boolean;
-  is_completed: boolean;
-  was_skipped: boolean;
-  routine_day?: {
-    name: string;
-    description?: string;
-  };
-  workout_session?: {
-    name: string;
-  };
-}
 
 interface WorkoutCalendarProps {
   clientId: string;
@@ -28,68 +12,13 @@ interface WorkoutCalendarProps {
 }
 
 export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalendarProps) => {
-  const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  
+  const { schedule, loading } = useWorkoutSchedule(
+    canSeeWorkoutHistory ? clientId : '', 
+    currentWeek
+  );
 
-  useEffect(() => {
-    if (canSeeWorkoutHistory) {
-      fetchWeekSchedule();
-    }
-  }, [clientId, currentWeek, canSeeWorkoutHistory]);
-
-  const fetchWeekSchedule = async () => {
-    setLoading(true);
-    try {
-      const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Monday
-      const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 }); // Sunday
-
-      const { data, error } = await supabase
-        .from('workout_schedule')
-        .select(`
-          id,
-          scheduled_date,
-          is_rest_day,
-          is_completed,
-          was_skipped,
-          routine_days!inner (
-            name,
-            description
-          ),
-          workout_sessions (
-            name
-          )
-        `)
-        .eq('client_id', clientId)
-        .gte('scheduled_date', format(weekStart, 'yyyy-MM-dd'))
-        .lte('scheduled_date', format(weekEnd, 'yyyy-MM-dd'))
-        .order('scheduled_date');
-
-      if (error) throw error;
-
-      const formattedSchedule = data?.map(item => ({
-        id: item.id,
-        scheduled_date: item.scheduled_date,
-        is_rest_day: item.is_rest_day,
-        is_completed: item.is_completed,
-        was_skipped: item.was_skipped,
-        routine_day: item.routine_days,
-        workout_session: item.workout_sessions?.[0]
-      })) || [];
-
-      setSchedule(formattedSchedule);
-    } catch (error) {
-      console.error('Error fetching schedule:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load workout schedule",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
