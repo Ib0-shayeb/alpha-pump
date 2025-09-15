@@ -382,27 +382,38 @@ export const Inbox = () => {
                         </div>
                       )}
                       
-                      {notification.type === 'routine_recommendation' && notification.routine && notification.trainer && (
+                      {notification.type === 'routine_recommendation' && (
                         <div className="mb-3">
                           <p className="text-sm text-muted-foreground mb-2">
-                            <button 
-                              onClick={() => window.open(`/trainer/${notification.data?.trainer_id}`, '_blank')}
-                              className="text-primary hover:underline font-medium"
-                            >
-                              {notification.trainer.display_name}
-                            </button> recommended a workout routine:
+                            {notification.trainer ? (
+                              <button 
+                                onClick={() => window.open(`/trainer/${notification.data?.trainer_id}`, '_blank')}
+                                className="text-primary hover:underline font-medium"
+                              >
+                                {notification.trainer.display_name}
+                              </button>
+                            ) : (
+                              <span className="font-medium">A trainer</span>
+                            )} recommended a workout routine:
                           </p>
-                          <div className="bg-muted/50 p-3 rounded">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="font-medium text-sm">{notification.routine.name}</p>
-                              <Badge variant="outline" className="text-xs">
-                                {notification.routine.daysCount || 0} days
-                              </Badge>
+                          
+                          {notification.routine ? (
+                            <div className="bg-muted/50 p-3 rounded">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="font-medium text-sm">{notification.routine.name}</p>
+                                <Badge variant="outline" className="text-xs">
+                                  {notification.routine.daysCount || 0} days
+                                </Badge>
+                              </div>
+                              {notification.routine.description && (
+                                <p className="text-xs text-muted-foreground">{notification.routine.description}</p>
+                              )}
                             </div>
-                            {notification.routine.description && (
-                              <p className="text-xs text-muted-foreground">{notification.routine.description}</p>
-                            )}
-                          </div>
+                          ) : (
+                            <div className="bg-muted/50 p-3 rounded">
+                              <p className="text-sm text-muted-foreground">Loading routine details...</p>
+                            </div>
+                          )}
                         </div>
                       )}
                       
