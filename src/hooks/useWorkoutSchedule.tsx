@@ -80,7 +80,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
           plan_type,
           start_date,
           is_active,
-          workout_routines!inner (
+          workout_routines (
             days_per_week,
             routine_days (
               id,
