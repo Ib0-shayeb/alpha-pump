@@ -216,8 +216,14 @@ export const Inbox = () => {
 
     // If no recommendationId provided, try to find it
     let actualRecommendationId = recommendationId;
-    if (!actualRecommendationId) {
-      const { data: recommendation } = await supabase
+    if (!actualRecommendationId && notification.data) {
+      console.log('Looking up recommendation for:', {
+        routine_id: notification.data.routine_id,
+        trainer_id: notification.data.trainer_id,
+        client_id: user?.id
+      });
+      
+      const { data: recommendation, error: recError } = await supabase
         .from('routine_recommendations')
         .select('id')
         .eq('routine_id', notification.data.routine_id)
@@ -227,12 +233,14 @@ export const Inbox = () => {
         .order('created_at', { ascending: false })
         .maybeSingle();
       
+      console.log('Recommendation lookup result:', { recommendation, recError });
+      
       if (recommendation) {
         actualRecommendationId = recommendation.id;
       } else {
         toast({
-          title: "Error",
-          description: "Recommendation not found",
+          title: "Error", 
+          description: "Recommendation not found in database",
           variant: "destructive",
         });
         return;
