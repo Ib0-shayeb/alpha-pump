@@ -101,6 +101,24 @@ export const Inbox = () => {
               daysCount: daysCount || 0
             } : undefined;
             
+            // Get recommendation_id by looking up the routine_recommendations table
+            const { data: recommendation } = await supabase
+              .from('routine_recommendations')
+              .select('id')
+              .eq('routine_id', notificationData.routine_id)
+              .eq('trainer_id', notificationData.trainer_id)
+              .eq('client_id', user.id)
+              .eq('status', 'pending')
+              .order('created_at', { ascending: false })
+              .maybeSingle();
+            
+            if (recommendation) {
+              enriched.data = {
+                ...notificationData,
+                recommendation_id: recommendation.id
+              };
+            }
+
             if (notificationData?.trainer_id) {
               const { data: trainer } = await supabase
                 .from('profiles')
