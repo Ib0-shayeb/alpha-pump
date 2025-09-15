@@ -509,25 +509,25 @@ export const Inbox = () => {
                         </>
                       )}
                     
-                      {notification.type === 'routine_recommendation' && notification.data?.recommendation_id && (
+                      {notification.type === 'routine_recommendation' && (
                         <>
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleRoutineRecommendation(notification.id, notification.data!.recommendation_id!, false)}
+                            onClick={() => handleRoutineRecommendation(notification.id, notification.data?.recommendation_id || '', false)}
                           >
                             Decline
                           </Button>
                           <Button 
                             size="sm"
-                            onClick={() => handleDirectRoutineAcceptance(notification.id, notification.data!.recommendation_id!, notification.data!.routine_id!)}
+                            onClick={() => handleDirectRoutineAcceptance(notification.id, notification.data?.recommendation_id || '', notification.data?.routine_id || '')}
                           >
                             Accept
                           </Button>
                           <Button 
                             size="sm"
                             variant="outline"
-                            onClick={() => handleRoutineRecommendation(notification.id, notification.data!.recommendation_id!, true)}
+                            onClick={() => handleRoutineRecommendation(notification.id, notification.data?.recommendation_id || '', true)}
                           >
                             Choose Plan
                           </Button>
