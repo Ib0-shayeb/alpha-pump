@@ -42,9 +42,23 @@ export const useProfileCompletion = () => {
 
       setProfile(profile);
       
-      // Check if profile is complete - require at least display_name and username
-      const complete = !!(profile?.display_name && profile?.username);
+      // Check if profile is complete - require essential fields
+      const complete = !!(
+        profile?.display_name && 
+        profile?.username && 
+        profile?.fitness_goals && 
+        profile?.fitness_goals.length > 0 &&
+        profile?.activity_level
+      );
       setIsComplete(complete);
+      console.log('Profile completion check:', { 
+        profile, 
+        complete,
+        hasDisplayName: !!profile?.display_name,
+        hasUsername: !!profile?.username,
+        hasGoals: !!profile?.fitness_goals?.length,
+        hasActivityLevel: !!profile?.activity_level
+      });
     } catch (error) {
       console.error('Error fetching profile:', error);
       setIsComplete(false);

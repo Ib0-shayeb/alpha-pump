@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
@@ -249,6 +250,43 @@ export const ProfileCompletionForm = ({ onComplete }: ProfileCompletionFormProps
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="fitness_goals"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fitness Goals *</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: "weight_loss", label: "Weight Loss" },
+                        { value: "muscle_gain", label: "Muscle Gain" },
+                        { value: "endurance", label: "Endurance" },
+                        { value: "strength", label: "Strength" },
+                        { value: "general_fitness", label: "General Fitness" }
+                      ].map((goal) => (
+                        <label key={goal.value} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={field.value?.includes(goal.value as any) || false}
+                            onChange={(e) => {
+                              const updatedGoals = e.target.checked 
+                                ? [...(field.value || []), goal.value]
+                                : (field.value || []).filter(g => g !== goal.value);
+                              field.onChange(updatedGoals);
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm">{goal.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
