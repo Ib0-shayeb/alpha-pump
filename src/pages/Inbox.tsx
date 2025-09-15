@@ -7,6 +7,7 @@ import { Bell, Check, X, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { PlanTypeDialog } from "@/components/PlanTypeDialog";
 
 interface Notification {
   id: string;
@@ -18,6 +19,7 @@ interface Notification {
     client_id?: string;
     routine_id?: string;
     recommendation_id?: string;
+    plan_type?: 'strict' | 'flexible';
   } | null;
   read: boolean;
   created_at: string;
@@ -38,6 +40,13 @@ interface Notification {
 export const Inbox = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<{
+    notificationId: string;
+    recommendationId: string;
+    routineId: string;
+    routineName: string;
+  } | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -172,28 +181,88 @@ export const Inbox = () => {
   };
 
   const handleRoutineRecommendation = async (notificationId: string, recommendationId: string, accept: boolean) => {
+    if (!accept) {
+      // Handle decline directly
+      try {
+        const { error } = await supabase
+          .from('routine_recommendations')
+          .update({ status: 'declined' })
+          .eq('id', recommendationId);
+
+        if (error) throw error;
+
+        await markAsRead(notificationId);
+        setNotifications(prev => prev.filter(n => n.id !== notificationId));
+
+        toast({
+          title: "Routine declined",
+          description: "Routine recommendation declined",
+        });
+      } catch (error) {
+        console.error('Error declining routine recommendation:', error);
+        toast({
+          title: "Error",
+          description: "Failed to decline recommendation",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    // For accept, show plan type dialog
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && notification.routine) {
+      setSelectedRecommendation({
+        notificationId,
+        recommendationId,
+        routineId: notification.data?.routine_id || '',
+        routineName: notification.routine.name
+      });
+      setIsPlanTypeDialogOpen(true);
+    }
+  };
+
+  const handleConfirmRoutineAcceptance = async (planType: 'strict' | 'flexible') => {
+    if (!selectedRecommendation || !user) return;
+
     try {
       // Update recommendation status
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('routine_recommendations')
-        .update({ status: accept ? 'accepted' : 'declined' })
-        .eq('id', recommendationId);
+        .update({ status: 'accepted' })
+        .eq('id', selectedRecommendation.recommendationId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Create client routine assignment
+      const { error: assignmentError } = await supabase
+        .from('client_routine_assignments')
+        .insert({
+          client_id: user.id,
+          routine_id: selectedRecommendation.routineId,
+          plan_type: planType,
+          start_date: new Date().toISOString().split('T')[0], // Today
+          is_active: true
+        });
+
+      if (assignmentError) throw assignmentError;
 
       // Mark notification as read and remove it
-      await markAsRead(notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      await markAsRead(selectedRecommendation.notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== selectedRecommendation.notificationId));
 
       toast({
-        title: accept ? "Routine accepted" : "Routine declined",
-        description: accept ? "The routine has been added to your collection" : "Routine recommendation declined",
+        title: "Routine accepted",
+        description: `The routine has been added with ${planType} plan type`,
       });
+
+      setIsPlanTypeDialogOpen(false);
+      setSelectedRecommendation(null);
     } catch (error) {
-      console.error('Error handling routine recommendation:', error);
+      console.error('Error accepting routine recommendation:', error);
       toast({
         title: "Error",
-        description: "Failed to handle recommendation",
+        description: "Failed to accept recommendation",
         variant: "destructive",
       });
     }
@@ -335,6 +404,14 @@ export const Inbox = () => {
             <p className="text-muted-foreground">You're all caught up!</p>
           </Card>
         )}
+        
+        <PlanTypeDialog
+          open={isPlanTypeDialogOpen}
+          onOpenChange={setIsPlanTypeDialogOpen}
+          routineId={selectedRecommendation?.routineId || ''}
+          routineName={selectedRecommendation?.routineName || ''}
+          onConfirm={handleConfirmRoutineAcceptance}
+        />
       </div>
     </Layout>
   );

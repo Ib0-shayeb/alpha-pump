@@ -252,6 +252,7 @@ export type Database = {
           created_at: string
           id: string
           message: string | null
+          plan_type: Database["public"]["Enums"]["plan_type"] | null
           routine_id: string
           status: string
           trainer_id: string
@@ -262,6 +263,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          plan_type?: Database["public"]["Enums"]["plan_type"] | null
           routine_id: string
           status?: string
           trainer_id: string
@@ -272,6 +274,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          plan_type?: Database["public"]["Enums"]["plan_type"] | null
           routine_id?: string
           status?: string
           trainer_id?: string
@@ -594,6 +597,10 @@ export type Database = {
       is_accepted_trainer: {
         Args: { _client_id: string; _trainer_id: string }
         Returns: boolean
+      }
+      skip_flexible_plan_day: {
+        Args: { _assignment_id: string; _client_id: string; _skip_date: string }
+        Returns: undefined
       }
     }
     Enums: {
