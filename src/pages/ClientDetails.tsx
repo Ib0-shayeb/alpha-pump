@@ -145,34 +145,50 @@ export const ClientDetails = () => {
 
     setActiveRoutinesLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the assignments
+      const { data: assignments, error: assignmentsError } = await supabase
         .from('client_routine_assignments')
-        .select(`
-          id,
-          routine_id,
-          plan_type,
-          start_date,
-          workout_routines (
-            name,
-            description,
-            days_per_week
-          )
-        `)
+        .select('id, routine_id, plan_type, start_date')
         .eq('client_id', clientId)
         .eq('is_active', true)
         .order('start_date', { ascending: false });
 
-      if (error) throw error;
+      if (assignmentsError) throw assignmentsError;
 
-      const formattedRoutines = data?.map(assignment => ({
-        id: assignment.id,
-        routine_id: assignment.routine_id,
-        plan_type: assignment.plan_type as 'strict' | 'flexible',
-        start_date: assignment.start_date,
-        routine: assignment.workout_routines
-      })).filter(assignment => assignment.routine) || [];
+      if (!assignments || assignments.length === 0) {
+        setActiveRoutines([]);
+        return;
+      }
 
-      setActiveRoutines(formattedRoutines as ActiveRoutine[]);
+      // Then get the routine details
+      const routineIds = assignments.map(a => a.routine_id);
+      const { data: routines, error: routinesError } = await supabase
+        .from('workout_routines')
+        .select('id, name, description, days_per_week')
+        .in('id', routineIds);
+
+      if (routinesError) throw routinesError;
+
+      // Combine the data
+      const formattedRoutines: ActiveRoutine[] = assignments.map(assignment => {
+        const routine = routines?.find(r => r.id === assignment.routine_id);
+        return {
+          id: assignment.id,
+          routine_id: assignment.routine_id,
+          plan_type: assignment.plan_type as 'strict' | 'flexible',
+          start_date: assignment.start_date,
+          routine: routine ? {
+            name: routine.name,
+            description: routine.description || undefined,
+            days_per_week: routine.days_per_week
+          } : {
+            name: 'Unknown Routine',
+            days_per_week: 0
+          }
+        };
+      }).filter(assignment => assignment.routine.name !== 'Unknown Routine');
+
+      setActiveRoutines(formattedRoutines);
     } catch (error) {
       console.error('Error fetching active routines:', error);
       toast({

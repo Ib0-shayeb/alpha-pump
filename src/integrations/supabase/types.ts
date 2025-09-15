@@ -45,7 +45,15 @@ export type Database = {
           start_date?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_client_routine_assignments_routine"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "workout_routines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
