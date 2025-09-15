@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { WorkoutCalendar } from "@/components/WorkoutCalendar";
-import { PlanTypeDialog } from "@/components/PlanTypeDialog";
 
 interface ClientProfile {
   user_id: string;
@@ -74,8 +73,6 @@ export const ClientDetails = () => {
   const [activeRoutinesLoading, setActiveRoutinesLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isRoutineDialogOpen, setIsRoutineDialogOpen] = useState(false);
-  const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
-  const [selectedRoutineForAssignment, setSelectedRoutineForAssignment] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     fetchClientDetails();
@@ -294,13 +291,7 @@ export const ClientDetails = () => {
   };
 
   const handleAssignRoutine = async (routineId: string, routineName: string) => {
-    setSelectedRoutineForAssignment({ id: routineId, name: routineName });
-    setIsRoutineDialogOpen(false);
-    setIsPlanTypeDialogOpen(true);
-  };
-
-  const handleConfirmPlanAssignment = async (planType: 'strict' | 'flexible') => {
-    if (!clientId || !user || !selectedRoutineForAssignment) return;
+    if (!clientId || !user) return;
 
     try {
       const { error } = await supabase
@@ -308,8 +299,8 @@ export const ClientDetails = () => {
         .insert({
           trainer_id: user.id,
           client_id: clientId,
-          routine_id: selectedRoutineForAssignment.id,
-          message: `Your trainer has recommended the "${selectedRoutineForAssignment.name}" routine with a ${planType} plan.`,
+          routine_id: routineId,
+          message: `Your trainer has recommended the "${routineName}" routine for you.`,
           status: 'pending'
         });
 
@@ -322,21 +313,19 @@ export const ClientDetails = () => {
           user_id: clientId,
           type: 'routine_recommendation',
           title: 'New Routine Recommendation',
-          message: `Your trainer has recommended a new routine: ${selectedRoutineForAssignment.name}`,
+          message: `Your trainer has recommended a new routine: ${routineName}`,
           data: { 
-            routine_id: selectedRoutineForAssignment.id, 
-            trainer_id: user.id,
-            plan_type: planType
+            routine_id: routineId, 
+            trainer_id: user.id
           }
         });
 
       toast({
         title: "Routine Assigned",
-        description: `Successfully recommended "${selectedRoutineForAssignment.name}" with ${planType} plan to ${client?.display_name}`,
+        description: `Successfully recommended "${routineName}" to ${client?.display_name}`,
       });
       
-      setIsPlanTypeDialogOpen(false);
-      setSelectedRoutineForAssignment(null);
+      setIsRoutineDialogOpen(false);
     } catch (error: any) {
       console.error('Error assigning routine:', error);
       toast({
@@ -624,6 +613,12 @@ export const ClientDetails = () => {
         {client.status === 'accepted' && (
           <div className="flex gap-3">
             <Dialog open={isRoutineDialogOpen} onOpenChange={setIsRoutineDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleOpenRoutineDialog} className="flex items-center gap-2">
+                  <Dumbbell size={16} />
+                  Assign Routine
+                </Button>
+              </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Assign Routine to {client.display_name}</DialogTitle>
@@ -690,14 +685,6 @@ export const ClientDetails = () => {
             </Button>
           </div>
         )}
-        
-        <PlanTypeDialog
-          open={isPlanTypeDialogOpen}
-          onOpenChange={setIsPlanTypeDialogOpen}
-          routineId={selectedRoutineForAssignment?.id || ''}
-          routineName={selectedRoutineForAssignment?.name || ''}
-          onConfirm={handleConfirmPlanAssignment}
-        />
       </div>
     </Layout>
   );
