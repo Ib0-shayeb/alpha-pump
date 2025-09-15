@@ -34,6 +34,7 @@ interface Notification {
   routine?: {
     name: string;
     description: string;
+    daysCount?: number;
   };
 }
 
@@ -82,12 +83,23 @@ export const Inbox = () => {
           }
           
           if (notification.type === 'routine_recommendation' && notificationData?.routine_id) {
+            // Get routine details with days count
             const { data: routine } = await supabase
               .from('workout_routines')
-              .select('name, description')
+              .select('name, description, days_per_week')
               .eq('id', notificationData.routine_id)
               .maybeSingle();
-            enriched.routine = routine || undefined;
+            
+            // Get the number of routine days
+            const { count: daysCount } = await supabase
+              .from('routine_days')
+              .select('*', { count: 'exact', head: true })
+              .eq('routine_id', notificationData.routine_id);
+            
+            enriched.routine = routine ? {
+              ...routine,
+              daysCount: daysCount || 0
+            } : undefined;
             
             if (notificationData?.trainer_id) {
               const { data: trainer } = await supabase
@@ -361,8 +373,13 @@ export const Inbox = () => {
                               {notification.trainer.display_name}
                             </button> recommended a workout routine:
                           </p>
-                          <div className="bg-muted/50 p-2 rounded">
-                            <p className="font-medium text-sm">{notification.routine.name}</p>
+                          <div className="bg-muted/50 p-3 rounded">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-medium text-sm">{notification.routine.name}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {notification.routine.daysCount || 0} days
+                              </Badge>
+                            </div>
                             {notification.routine.description && (
                               <p className="text-xs text-muted-foreground">{notification.routine.description}</p>
                             )}
