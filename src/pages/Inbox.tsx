@@ -315,15 +315,30 @@ export const Inbox = () => {
                       </div>
                       
                       {notification.type === 'connection_request' && notification.trainer && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {notification.trainer.display_name} (@{notification.trainer.username}) wants to connect with you as your trainer
-                        </p>
+                        <div className="mb-3">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <button 
+                              onClick={() => window.open(`/trainer/${notification.data?.trainer_id}`, '_blank')}
+                              className="text-primary hover:underline font-medium"
+                            >
+                              {notification.trainer.display_name}
+                            </button> (@{notification.trainer.username}) wants to connect with you as your trainer
+                          </p>
+                          <div className="text-xs text-muted-foreground">
+                            Click the trainer's name to view their profile and learn more about them.
+                          </div>
+                        </div>
                       )}
                       
                       {notification.type === 'routine_recommendation' && notification.routine && notification.trainer && (
                         <div className="mb-3">
                           <p className="text-sm text-muted-foreground mb-2">
-                            {notification.trainer.display_name} recommended a workout routine:
+                            <button 
+                              onClick={() => window.open(`/trainer/${notification.data?.trainer_id}`, '_blank')}
+                              className="text-primary hover:underline font-medium"
+                            >
+                              {notification.trainer.display_name}
+                            </button> recommended a workout routine:
                           </p>
                           <div className="bg-muted/50 p-2 rounded">
                             <p className="font-medium text-sm">{notification.routine.name}</p>

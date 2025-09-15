@@ -98,9 +98,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          about: string | null
           activity_level: Database["public"]["Enums"]["activity_level"] | null
           avatar_url: string | null
           bio: string | null
+          certifications: string[] | null
           created_at: string
           date_of_birth: string | null
           display_name: string | null
@@ -110,7 +112,10 @@ export type Database = {
           height: number | null
           id: string
           preferred_units: Database["public"]["Enums"]["unit_preference"] | null
+          rating: number | null
           role: string | null
+          specializations: string[] | null
+          total_reviews: number | null
           trainer_can_see_height: boolean | null
           trainer_can_see_personal_info: boolean | null
           trainer_can_see_weight: boolean | null
@@ -119,11 +124,14 @@ export type Database = {
           user_id: string
           username: string | null
           weight: number | null
+          years_experience: number | null
         }
         Insert: {
+          about?: string | null
           activity_level?: Database["public"]["Enums"]["activity_level"] | null
           avatar_url?: string | null
           bio?: string | null
+          certifications?: string[] | null
           created_at?: string
           date_of_birth?: string | null
           display_name?: string | null
@@ -135,7 +143,10 @@ export type Database = {
           preferred_units?:
             | Database["public"]["Enums"]["unit_preference"]
             | null
+          rating?: number | null
           role?: string | null
+          specializations?: string[] | null
+          total_reviews?: number | null
           trainer_can_see_height?: boolean | null
           trainer_can_see_personal_info?: boolean | null
           trainer_can_see_weight?: boolean | null
@@ -144,11 +155,14 @@ export type Database = {
           user_id: string
           username?: string | null
           weight?: number | null
+          years_experience?: number | null
         }
         Update: {
+          about?: string | null
           activity_level?: Database["public"]["Enums"]["activity_level"] | null
           avatar_url?: string | null
           bio?: string | null
+          certifications?: string[] | null
           created_at?: string
           date_of_birth?: string | null
           display_name?: string | null
@@ -160,7 +174,10 @@ export type Database = {
           preferred_units?:
             | Database["public"]["Enums"]["unit_preference"]
             | null
+          rating?: number | null
           role?: string | null
+          specializations?: string[] | null
+          total_reviews?: number | null
           trainer_can_see_height?: boolean | null
           trainer_can_see_personal_info?: boolean | null
           trainer_can_see_weight?: boolean | null
@@ -169,6 +186,7 @@ export type Database = {
           user_id?: string
           username?: string | null
           weight?: number | null
+          years_experience?: number | null
         }
         Relationships: []
       }

@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HamburgerMenuProps {
   unreadCount?: number;
@@ -13,10 +14,29 @@ interface HamburgerMenuProps {
 
 export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: HamburgerMenuProps) => {
   const [open, setOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('client');
   const { user, signOut } = useAuth();
   
-  // Get user role from user metadata, default to 'client'
-  const userRole = user?.user_metadata?.role || 'client';
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        setUserRole(profile?.role || 'client');
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+    
+    fetchUserRole();
+  }, [user]);
+  
   const mainHref = userRole === 'trainer' ? '/trainer' : '/';
 
   const menuItems = [
@@ -31,6 +51,11 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
       href: "/inbox",
       badge: unreadCount > 0 ? unreadCount : undefined,
     },
+    ...(userRole === 'trainer' ? [{
+      label: "Trainer Profile",
+      icon: User,
+      href: "/trainer/profile/edit",
+    }] : []),
     {
       label: "Workout Routines",
       icon: Calendar,
