@@ -34,7 +34,7 @@ interface Notification {
   routine?: {
     name: string;
     description: string;
-    daysCount?: number;
+    days_per_week?: number;
   };
 }
 
@@ -96,18 +96,7 @@ export const Inbox = () => {
             
             console.log('Routine fetch result:', { routine, routineError });
             
-            // Get the number of routine days
-            const { count: daysCount, error: daysError } = await supabase
-              .from('routine_days')
-              .select('*', { count: 'exact', head: true })
-              .eq('routine_id', notificationData.routine_id);
-            
-            console.log('Days count result:', { daysCount, daysError });
-            
-            enriched.routine = routine ? {
-              ...routine,
-              daysCount: daysCount || 0
-            } : undefined;
+            enriched.routine = routine || undefined;
             
             // Get recommendation_id by looking up the routine_recommendations table
             const { data: recommendation } = await supabase
@@ -410,7 +399,7 @@ export const Inbox = () => {
                               <div className="flex items-center justify-between mb-1">
                                 <p className="font-medium text-sm">{notification.routine.name}</p>
                                 <Badge variant="outline" className="text-xs">
-                                  {notification.routine.daysCount || 0} days
+                                  {notification.routine.days_per_week || 0} days/week
                                 </Badge>
                               </div>
                               {notification.routine.description && (
