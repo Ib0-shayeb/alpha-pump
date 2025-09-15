@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { PlanTypeDialog } from "@/components/PlanTypeDialog";
 
 interface WorkoutRoutine {
   id: string;
@@ -33,6 +34,8 @@ const WorkoutRoutines = () => {
   const [myRoutines, setMyRoutines] = useState<WorkoutRoutine[]>([]);
   const [publicRoutines, setPublicRoutines] = useState<WorkoutRoutine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
+  const [selectedRoutineForActivation, setSelectedRoutineForActivation] = useState<{id: string, name: string} | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -115,38 +118,86 @@ const WorkoutRoutines = () => {
     }
   };
 
-  const toggleRoutineActive = async (routineId: string, currentActive: boolean) => {
-    try {
-      // If activating this routine, deactivate all others first
-      if (!currentActive) {
-        await supabase
-          .from('workout_routines')
-          .update({ is_active: false })
-          .eq('user_id', user?.id);
-      }
+  const handleActivateRoutine = (routineId: string, routineName: string, currentActive: boolean) => {
+    if (currentActive) {
+      // If deactivating, do it directly
+      deactivateRoutine(routineId);
+    } else {
+      // If activating, show plan type dialog
+      setSelectedRoutineForActivation({ id: routineId, name: routineName });
+      setIsPlanTypeDialogOpen(true);
+    }
+  };
 
-      // Toggle this routine
+  const deactivateRoutine = async (routineId: string) => {
+    try {
       const { error } = await supabase
         .from('workout_routines')
-        .update({ is_active: !currentActive })
+        .update({ is_active: false })
         .eq('id', routineId);
 
       if (error) throw error;
 
-      // Refresh routines
       await fetchRoutines();
       
       toast({
-        title: currentActive ? "Routine Deactivated" : "Routine Activated",
-        description: currentActive 
-          ? "This routine is no longer active" 
-          : "This routine is now your active routine"
+        title: "Routine Deactivated",
+        description: "This routine is no longer active"
       });
     } catch (error) {
-      console.error('Error toggling routine:', error);
+      console.error('Error deactivating routine:', error);
       toast({
         title: "Error",
-        description: "Failed to update routine",
+        description: "Failed to deactivate routine",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleConfirmActivation = async (planType: 'strict' | 'flexible') => {
+    if (!selectedRoutineForActivation || !user) return;
+
+    try {
+      // Deactivate all other routines first
+      await supabase
+        .from('workout_routines')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      // Activate this routine
+      const { error: routineError } = await supabase
+        .from('workout_routines')
+        .update({ is_active: true })
+        .eq('id', selectedRoutineForActivation.id);
+
+      if (routineError) throw routineError;
+
+      // Create a client routine assignment
+      const { error: assignmentError } = await supabase
+        .from('client_routine_assignments')
+        .insert({
+          client_id: user.id,
+          routine_id: selectedRoutineForActivation.id,
+          plan_type: planType,
+          start_date: new Date().toISOString().split('T')[0]
+        });
+
+      if (assignmentError) throw assignmentError;
+
+      await fetchRoutines();
+      
+      toast({
+        title: "Routine Activated",
+        description: `"${selectedRoutineForActivation.name}" is now your active routine with ${planType} plan`
+      });
+
+      setIsPlanTypeDialogOpen(false);
+      setSelectedRoutineForActivation(null);
+    } catch (error) {
+      console.error('Error activating routine:', error);
+      toast({
+        title: "Error",
+        description: "Failed to activate routine",
         variant: "destructive"
       });
     }
@@ -282,7 +333,7 @@ const WorkoutRoutines = () => {
                 <Button
                   size="sm"
                   variant={routine.is_active ? "default" : "outline"}
-                  onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
+                  onClick={() => handleActivateRoutine(routine.id, routine.name, routine.is_active)}
                 >
                   {routine.is_active ? (
                     <>
@@ -404,6 +455,14 @@ const WorkoutRoutines = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        <PlanTypeDialog
+          open={isPlanTypeDialogOpen}
+          onOpenChange={setIsPlanTypeDialogOpen}
+          routineId={selectedRoutineForActivation?.id || ''}
+          routineName={selectedRoutineForActivation?.name || ''}
+          onConfirm={handleConfirmActivation}
+        />
       </div>
     </Layout>
   );
