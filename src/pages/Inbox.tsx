@@ -214,44 +214,12 @@ export const Inbox = () => {
       return;
     }
 
-    // Always lookup the recommendation using notification data since recommendationId might not be stored
-    let actualRecommendationId = recommendationId;
+    const actualRecommendationId = notification.data.recommendation_id;
     
-    // Try to find recommendation using notification data
-    if (notification.data.routine_id && notification.data.trainer_id && user?.id) {
-      const { data: recommendation, error: recError } = await supabase
-        .from('routine_recommendations')
-        .select('id, status')
-        .eq('routine_id', notification.data.routine_id)
-        .eq('trainer_id', notification.data.trainer_id)
-        .eq('client_id', user.id)
-        .eq('status', 'pending')
-        .maybeSingle();
-      
-      if (recError) {
-        console.error('Error looking up recommendation:', recError);
-        toast({
-          title: "Database Error",
-          description: "Failed to lookup recommendation",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (recommendation) {
-        actualRecommendationId = recommendation.id;
-      } else {
-        toast({
-          title: "Error", 
-          description: "No pending recommendation found. It may have already been processed.",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
+    if (!actualRecommendationId) {
       toast({
         title: "Error",
-        description: "Missing required data for recommendation lookup",
+        description: "Recommendation ID not found",
         variant: "destructive",
       });
       return;
