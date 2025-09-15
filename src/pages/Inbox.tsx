@@ -73,8 +73,6 @@ export const Inbox = () => {
           let enriched: Notification = { ...notification } as Notification;
           const notificationData = notification.data as any;
           
-          console.log('Processing notification:', notification.type, notificationData);
-          
           if (notification.type === 'connection_request' && notificationData?.trainer_id) {
             const { data: trainer } = await supabase
               .from('profiles')
@@ -85,16 +83,12 @@ export const Inbox = () => {
           }
           
           if (notification.type === 'routine_recommendation' && notificationData?.routine_id) {
-            console.log('Fetching routine details for:', notificationData.routine_id);
-            
             // Get routine details with days count
             const { data: routine, error: routineError } = await supabase
               .from('workout_routines')
               .select('name, description, days_per_week')
               .eq('id', notificationData.routine_id)
               .maybeSingle();
-            
-            console.log('Routine fetch result:', { routine, routineError });
             
             enriched.routine = routine || undefined;
             
@@ -118,13 +112,11 @@ export const Inbox = () => {
 
             // Get trainer info for routine recommendations
             if (notificationData?.trainer_id) {
-              console.log('Fetching trainer profile for ID:', notificationData.trainer_id);
-              const { data: trainer, error: trainerError } = await supabase
+              const { data: trainer } = await supabase
                 .from('profiles')
                 .select('display_name, username')
                 .eq('user_id', notificationData.trainer_id)
                 .maybeSingle();
-              console.log('Trainer fetch result:', { trainer, trainerError });
               enriched.trainer = trainer || undefined;
             }
           }
