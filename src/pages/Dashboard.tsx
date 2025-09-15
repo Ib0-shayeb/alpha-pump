@@ -215,53 +215,6 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Quick Actions */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Quick Actions</h3>
-          <div className="space-y-3">
-            <Link to="/routines">
-              <Card className="p-4 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar size={20} className="text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium">Workout Routines</h4>
-                    <p className="text-sm text-muted-foreground">Manage your routines</p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-
-            <Link to="/routines/create">
-              <Card className="p-4 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar size={20} className="text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium">Create New Routine</h4>
-                    <p className="text-sm text-muted-foreground">Build your workout plan</p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-
-            <Link to="/exercises">
-              <Card className="p-4 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200 cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-accent/10 rounded-lg">
-                    <Dumbbell size={20} className="text-accent" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium">Browse Exercises</h4>
-                    <p className="text-sm text-muted-foreground">Explore exercise library</p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          </div>
-        </div>
 
         {/* Client Workout Calendar */}
         {userRole === 'client' && (

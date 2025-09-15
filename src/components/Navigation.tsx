@@ -15,6 +15,18 @@ export const Navigation = () => {
   const location = useLocation();
   const { signOut } = useAuth();
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Force reload to clear all state
+      window.location.href = '/auth';
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force navigation even if signOut fails
+      window.location.href = '/auth';
+    }
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden">
       <div className="flex justify-around items-center py-2">
@@ -39,7 +51,7 @@ export const Navigation = () => {
           );
         })}
         <Button
-          onClick={signOut}
+          onClick={handleSignOut}
           variant="ghost"
           size="sm"
           className="flex flex-col items-center py-2 px-3 text-muted-foreground hover:text-foreground"
