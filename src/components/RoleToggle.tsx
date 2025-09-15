@@ -4,12 +4,14 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export const RoleToggle = () => {
   const [isTrainer, setIsTrainer] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -51,6 +53,9 @@ export const RoleToggle = () => {
         title: "Role updated",
         description: `You are now viewing as a ${newRole}`,
       });
+      
+      // Navigate to the appropriate view
+      navigate(checked ? '/trainer' : '/');
     } catch (error) {
       console.error('Error updating role:', error);
       toast({
