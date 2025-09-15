@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientConnectRequest } from "@/components/ClientConnectRequest";
+import { PrivacySettings } from "@/components/PrivacySettings";
 import { TrainerView } from "./TrainerView";
 
 interface RecentWorkout {
@@ -241,6 +242,9 @@ const Dashboard = () => {
 
         {/* Trainer Connection for Clients */}
         <ClientConnectRequest />
+        
+        {/* Privacy Settings for Clients */}
+        {userRole === 'client' && <PrivacySettings />}
       </div>
     </Layout>
   );

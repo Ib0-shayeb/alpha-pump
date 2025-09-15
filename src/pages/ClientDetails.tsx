@@ -22,6 +22,19 @@ interface ClientProfile {
   height?: number;
   weight?: number;
   status: 'pending' | 'accepted' | 'declined';
+  trainer_can_see_weight?: boolean;
+  trainer_can_see_height?: boolean;
+  trainer_can_see_personal_info?: boolean;
+  trainer_can_see_workout_history?: boolean;
+}
+
+interface WorkoutSession {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time?: string;
+  notes?: string;
+  exercise_count: number;
 }
 
 interface WorkoutRoutine {
@@ -40,8 +53,10 @@ export const ClientDetails = () => {
   
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [routines, setRoutines] = useState<WorkoutRoutine[]>([]);
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [routinesLoading, setRoutinesLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [isRoutineDialogOpen, setIsRoutineDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -67,7 +82,11 @@ export const ClientDetails = () => {
             fitness_goals,
             activity_level,
             height,
-            weight
+            weight,
+            trainer_can_see_weight,
+            trainer_can_see_height,
+            trainer_can_see_personal_info,
+            trainer_can_see_workout_history
           )
         `)
         .eq('trainer_id', user.id)
@@ -81,6 +100,11 @@ export const ClientDetails = () => {
           ...connection.profiles,
           status: connection.status
         } as ClientProfile);
+        
+        // Fetch workout history if client allows it
+        if (connection.profiles.trainer_can_see_workout_history) {
+          fetchWorkoutHistory();
+        }
       }
     } catch (error) {
       console.error('Error fetching client details:', error);
@@ -92,6 +116,45 @@ export const ClientDetails = () => {
       navigate('/trainer');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWorkoutHistory = async () => {
+    if (!clientId) return;
+
+    setHistoryLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('workout_sessions')
+        .select(`
+          id,
+          name,
+          start_time,
+          end_time,
+          notes,
+          workout_exercises (count)
+        `)
+        .eq('user_id', clientId)
+        .order('start_time', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const formattedHistory = data?.map(session => ({
+        ...session,
+        exercise_count: session.workout_exercises?.[0]?.count || 0
+      })) || [];
+
+      setWorkoutHistory(formattedHistory);
+    } catch (error) {
+      console.error('Error fetching workout history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load workout history",
+        variant: "destructive",
+      });
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -286,7 +349,7 @@ export const ClientDetails = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {client.fitness_goals && client.fitness_goals.length > 0 && (
+              {client.trainer_can_see_personal_info && client.fitness_goals && client.fitness_goals.length > 0 && (
                 <div>
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <Target size={16} />
@@ -300,7 +363,7 @@ export const ClientDetails = () => {
                 </div>
               )}
 
-              {client.activity_level && (
+              {client.trainer_can_see_personal_info && client.activity_level && (
                 <div>
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <Dumbbell size={16} />
@@ -310,18 +373,81 @@ export const ClientDetails = () => {
                 </div>
               )}
 
-              {(client.height || client.weight) && (
+              {((client.trainer_can_see_height && client.height) || (client.trainer_can_see_weight && client.weight)) && (
                 <div>
                   <h4 className="font-medium mb-2">Physical Stats</h4>
                   <div className="space-y-1 text-sm text-muted-foreground">
-                    {client.height && <p>Height: {client.height} cm</p>}
-                    {client.weight && <p>Weight: {client.weight} kg</p>}
+                    {client.trainer_can_see_height && client.height && <p>Height: {client.height} cm</p>}
+                    {client.trainer_can_see_weight && client.weight && <p>Weight: {client.weight} kg</p>}
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Privacy Information */}
+            {(!client.trainer_can_see_personal_info || !client.trainer_can_see_height || !client.trainer_can_see_weight || !client.trainer_can_see_workout_history) && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Some client information is private and not visible to trainers.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Workout History */}
+        {client.trainer_can_see_workout_history && client.status === 'accepted' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar size={20} />
+                Recent Workout History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {historyLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-16 bg-muted rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : workoutHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {workoutHistory.map((session) => (
+                    <div key={session.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">{session.name}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(session.start_time).toLocaleDateString()} at {new Date(session.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {session.notes && (
+                            <p className="text-sm text-muted-foreground mt-1">{session.notes}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{session.exercise_count} exercises</p>
+                          {session.end_time && (
+                            <p className="text-sm text-muted-foreground">
+                              {Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / (1000 * 60))} min
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Dumbbell size={32} className="mx-auto mb-2" />
+                  <p>No workout history available</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Actions */}
         {client.status === 'accepted' && (

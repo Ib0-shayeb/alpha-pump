@@ -70,6 +70,10 @@ export type Database = {
           id: string
           preferred_units: Database["public"]["Enums"]["unit_preference"] | null
           role: string | null
+          trainer_can_see_height: boolean | null
+          trainer_can_see_personal_info: boolean | null
+          trainer_can_see_weight: boolean | null
+          trainer_can_see_workout_history: boolean | null
           updated_at: string
           user_id: string
           username: string | null
@@ -91,6 +95,10 @@ export type Database = {
             | Database["public"]["Enums"]["unit_preference"]
             | null
           role?: string | null
+          trainer_can_see_height?: boolean | null
+          trainer_can_see_personal_info?: boolean | null
+          trainer_can_see_weight?: boolean | null
+          trainer_can_see_workout_history?: boolean | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -112,6 +120,10 @@ export type Database = {
             | Database["public"]["Enums"]["unit_preference"]
             | null
           role?: string | null
+          trainer_can_see_height?: boolean | null
+          trainer_can_see_personal_info?: boolean | null
+          trainer_can_see_weight?: boolean | null
+          trainer_can_see_workout_history?: boolean | null
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -475,7 +487,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_accepted_trainer: {
+        Args: { _client_id: string; _trainer_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       activity_level:
