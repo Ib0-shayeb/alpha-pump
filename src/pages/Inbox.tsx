@@ -391,7 +391,7 @@ export const Inbox = () => {
                                 {notification.trainer.display_name || notification.trainer.username || 'Unknown Trainer'}
                               </button>
                             ) : (
-                              <span className="font-semibold text-muted-foreground">Loading trainer...</span>
+                              <span className="font-semibold text-muted-foreground">Trainer</span>
                             )}
                           </div>
                           
