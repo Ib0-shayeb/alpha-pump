@@ -214,37 +214,47 @@ export const Inbox = () => {
       return;
     }
 
-    // If no recommendationId provided, try to find it
+    // Always lookup the recommendation using notification data since recommendationId might not be stored
     let actualRecommendationId = recommendationId;
-    if (!actualRecommendationId && notification.data) {
-      console.log('Looking up recommendation for:', {
-        routine_id: notification.data.routine_id,
-        trainer_id: notification.data.trainer_id,
-        client_id: user?.id
-      });
-      
+    
+    // Try to find recommendation using notification data
+    if (notification.data.routine_id && notification.data.trainer_id && user?.id) {
       const { data: recommendation, error: recError } = await supabase
         .from('routine_recommendations')
-        .select('id')
+        .select('id, status')
         .eq('routine_id', notification.data.routine_id)
         .eq('trainer_id', notification.data.trainer_id)
-        .eq('client_id', user?.id)
+        .eq('client_id', user.id)
         .eq('status', 'pending')
-        .order('created_at', { ascending: false })
         .maybeSingle();
       
-      console.log('Recommendation lookup result:', { recommendation, recError });
+      if (recError) {
+        console.error('Error looking up recommendation:', recError);
+        toast({
+          title: "Database Error",
+          description: "Failed to lookup recommendation",
+          variant: "destructive",
+        });
+        return;
+      }
       
       if (recommendation) {
         actualRecommendationId = recommendation.id;
       } else {
         toast({
           title: "Error", 
-          description: "Recommendation not found in database",
+          description: "No pending recommendation found. It may have already been processed.",
           variant: "destructive",
         });
         return;
       }
+    } else {
+      toast({
+        title: "Error",
+        description: "Missing required data for recommendation lookup",
+        variant: "destructive",
+      });
+      return;
     }
 
     if (!accept) {
