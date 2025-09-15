@@ -20,6 +20,8 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
   const { user } = useAuth();
   const { toast } = useToast();
   
+  console.log('ClientWorkoutCalendar - user:', user?.id, 'currentWeek:', currentWeek);
+  
   const { schedule, loading, skipDay } = useWorkoutSchedule(user?.id || '', currentWeek);
 
 

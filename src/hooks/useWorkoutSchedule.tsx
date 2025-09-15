@@ -68,6 +68,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
     try {
       const weekStart = startOfWeek(weekDate, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(weekDate, { weekStartsOn: 1 });
+      
+      console.log('Fetching schedule for client:', clientId, 'week:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
 
       // Fetch active assignments with routine data
       const { data: assignments, error: assignmentError } = await supabase
@@ -92,6 +94,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         .eq('is_active', true);
 
       if (assignmentError) throw assignmentError;
+      
+      console.log('Fetched assignments:', assignments);
 
       // Fetch completed workout sessions for the week
       const { data: sessions, error: sessionError } = await supabase
@@ -116,7 +120,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         weekStart,
         weekEnd
       );
-
+      
+      console.log('Generated schedule:', generatedSchedule);
       setSchedule(generatedSchedule);
     } catch (error) {
       console.error('Error fetching schedule data:', error);
