@@ -244,69 +244,6 @@ export const Inbox = () => {
     }
   };
 
-  const handleDirectRoutineAcceptance = async (notificationId: string, recommendationId: string, routineId: string) => {
-    if (!user) return;
-
-    try {
-      // Update recommendation status
-      const { error: updateError } = await supabase
-        .from('routine_recommendations')
-        .update({ status: 'accepted' })
-        .eq('id', recommendationId);
-
-      if (updateError) throw updateError;
-
-      // Create client routine assignment with default strict plan
-      const { error: assignmentError } = await supabase
-        .from('client_routine_assignments')
-        .insert({
-          client_id: user.id,
-          routine_id: routineId,
-          plan_type: 'strict',
-          start_date: new Date().toISOString().split('T')[0], // Today
-          is_active: true
-        });
-
-      if (assignmentError) throw assignmentError;
-
-      // Mark notification as read and remove it
-      await markAsRead(notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
-
-      // Create notification for trainer about accepted recommendation
-      const notification = notifications.find(n => n.id === notificationId);
-      const { error: trainerNotificationError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: (notification?.data as any)?.trainer_id,
-          type: 'routine_accepted',
-          title: 'Routine Accepted',
-          message: `Your routine recommendation "${notification?.routine?.name || 'routine'}" was accepted`,
-          data: { 
-            client_id: user.id,
-            routine_id: routineId,
-            plan_type: 'strict'
-          }
-        });
-
-      if (trainerNotificationError) {
-        console.error('Error creating trainer notification:', trainerNotificationError);
-      }
-
-      toast({
-        title: "Routine accepted",
-        description: "The routine has been added with strict plan type",
-      });
-    } catch (error) {
-      console.error('Error accepting routine recommendation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to accept recommendation",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleConfirmRoutineAcceptance = async (planType: 'strict' | 'flexible') => {
     if (!selectedRecommendation || !user) return;
 
@@ -520,16 +457,9 @@ export const Inbox = () => {
                           </Button>
                           <Button 
                             size="sm"
-                            onClick={() => handleDirectRoutineAcceptance(notification.id, notification.data?.recommendation_id || '', notification.data?.routine_id || '')}
-                          >
-                            Accept
-                          </Button>
-                          <Button 
-                            size="sm"
-                            variant="outline"
                             onClick={() => handleRoutineRecommendation(notification.id, notification.data?.recommendation_id || '', true)}
                           >
-                            Choose Plan
+                            Accept
                           </Button>
                         </>
                       )}
