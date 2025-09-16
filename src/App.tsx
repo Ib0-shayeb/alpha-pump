@@ -16,6 +16,7 @@ import { TrainerView } from "./pages/TrainerView";
 import { ClientDetails } from "./pages/ClientDetails";
 import { TrainerProfile } from "./components/TrainerProfile";
 import { TrainerProfileEdit } from "./pages/TrainerProfileEdit";
+import AITrainer from "./pages/AITrainer";
 import NotFound from "./pages/NotFound";
 import AuthWrapper from "./components/AuthWrapper";
 
@@ -35,6 +36,7 @@ const AppContent = () => {
         <Route path="/active-workout" element={<AuthWrapper><ActiveWorkout /></AuthWrapper>} />
         <Route path="/inbox" element={<AuthWrapper><Inbox /></AuthWrapper>} />
         <Route path="/trainer" element={<AuthWrapper><TrainerView /></AuthWrapper>} />
+        <Route path="/ai-trainer" element={<AuthWrapper><AITrainer /></AuthWrapper>} />
         <Route path="/trainer/profile/edit" element={<AuthWrapper><TrainerProfileEdit /></AuthWrapper>} />
         <Route path="/trainer/:trainerId" element={<AuthWrapper><TrainerProfile /></AuthWrapper>} />
         <Route path="/trainer/client/:clientId" element={<AuthWrapper><ClientDetails /></AuthWrapper>} />

@@ -1,1 +1,4 @@
 project_id = "kfnrpkmockjqscwdmupr"
+
+[functions.ai-trainer-chat]
+verify_jwt = true
