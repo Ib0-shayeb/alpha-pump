@@ -160,18 +160,6 @@ const WorkoutRoutines = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      // Deactivate all other routines first
-      await supabase
-        .from('workout_routines')
-        .update({ is_active: false })
-        .eq('user_id', user.id);
-
-      // Deactivate all existing assignments
-      await supabase
-        .from('client_routine_assignments')
-        .update({ is_active: false })
-        .eq('client_id', user.id);
-
       // Activate this routine
       const { error: routineError } = await supabase
         .from('workout_routines')
@@ -180,13 +168,13 @@ const WorkoutRoutines = () => {
 
       if (routineError) throw routineError;
 
-      // Check if assignment already exists for today
+      // Check if assignment already exists for this routine
       const { data: existingAssignment, error: checkError } = await supabase
         .from('client_routine_assignments')
         .select('id')
         .eq('client_id', user.id)
         .eq('routine_id', selectedRoutineForActivation.id)
-        .eq('start_date', today)
+        .eq('is_active', true)
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -197,6 +185,7 @@ const WorkoutRoutines = () => {
           .from('client_routine_assignments')
           .update({
             plan_type: planType,
+            start_date: today,
             is_active: true
           })
           .eq('id', existingAssignment.id);
