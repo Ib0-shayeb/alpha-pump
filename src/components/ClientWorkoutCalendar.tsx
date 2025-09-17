@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Moon, CheckCircle, XCircle, SkipForward, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -45,26 +44,26 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
 
   const getDayStatus = (date: Date, scheduleDay?: ScheduleDay) => {
     if (!scheduleDay) {
-      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30", label: "Rest" };
+      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30 text-foreground", label: "Rest" };
     }
 
     if (scheduleDay.was_skipped) {
-      return { icon: XCircle, color: "text-orange-600", bgColor: "bg-orange-100", label: "Skipped" };
+      return { icon: XCircle, color: "text-orange-700", bgColor: "bg-orange-200 text-slate-900", label: "Skipped" };
     }
 
     if (scheduleDay.is_completed) {
-      return { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100", label: "Completed" };
+      return { icon: CheckCircle, color: "text-green-700", bgColor: "bg-green-200 text-slate-900", label: "Completed" };
     }
 
     if (scheduleDay.is_rest_day) {
-      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30", label: "Rest" };
+      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30 text-foreground", label: "Rest" };
     }
 
     if (isPast(date) && !isToday(date)) {
-      return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-100", label: "Missed" };
+      return { icon: XCircle, color: "text-red-700", bgColor: "bg-red-200 text-slate-900", label: "Missed" };
     }
 
-    return { icon: Dumbbell, color: "text-blue-600", bgColor: "bg-blue-100", label: "Scheduled" };
+    return { icon: Dumbbell, color: "text-blue-700", bgColor: "bg-blue-200 text-slate-900", label: "Scheduled" };
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -140,12 +139,26 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
           <div className="grid grid-cols-7 gap-2">
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-24 bg-muted rounded"></div>
+                <div className="h-14 bg-muted rounded"></div>
               </div>
             ))}
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Week day header shown once for all rows */}
+            <div className="grid grid-cols-7 gap-2">
+              {getWeekDays().map((date) => (
+                <div key={`header-${date.toISOString()}`} className="text-center">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    {format(date, 'EEE')}
+                  </div>
+                  <div className={`text-sm font-medium ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
+                    {format(date, 'd')}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {routineSchedules.map((row) => (
               <div key={row.assignment_id}>
                 <div className="mb-2 text-sm font-medium text-muted-foreground">
@@ -154,37 +167,25 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
                 <div className="grid grid-cols-7 gap-2">
                   {getWeekDays().map((date, index) => {
                     const scheduleDay = getScheduleForDayForAssignment(row.assignment_id, date);
-                    const { icon: StatusIcon, color, bgColor, label } = getDayStatus(date, scheduleDay);
-                    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    const { bgColor } = getDayStatus(date, scheduleDay);
 
                     return (
-                      <div key={date.toISOString()} className="space-y-1">
-                        <div className="text-center">
-                          <div className="text-xs font-medium text-muted-foreground">
-                            {dayNames[index]}
-                          </div>
-                          <div className={`text-sm font-medium ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
-                            {format(date, 'd')}
-                          </div>
-                        </div>
-
-                        <div className={`min-h-[100px] p-2 rounded-lg border-2 ${
+                      <div key={date.toISOString()} className="">
+                        <div className={`min-h-[56px] p-1 rounded-lg border-2 ${
                           isToday(date) ? 'border-primary' : 'border-border'
                         } ${bgColor} transition-colors relative`}>
                           <div className="flex flex-col items-center justify-center h-full text-center">
-                            <StatusIcon size={16} className={`mb-1 ${color}`} />
-                            <div className="text-xs font-medium">{label}</div>
 
                             {scheduleDay && !scheduleDay.is_rest_day && (
                               <div className="mt-1">
                                 {scheduleDay.workout_session ? (
-                                  <Badge variant="secondary" className="text-xs px-1 py-0">
+                                  <span className="text-xs font-medium">
                                     {scheduleDay.workout_session.name}
-                                  </Badge>
+                                  </span>
                                 ) : scheduleDay.routine_day ? (
-                                  <Badge variant="outline" className="text-xs px-1 py-0">
+                                  <span className="text-xs font-medium">
                                     {scheduleDay.routine_day.name}
-                                  </Badge>
+                                  </span>
                                 ) : null}
                               </div>
                             )}
@@ -229,35 +230,6 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
           </div>
         )}
         
-        {/* Legend */}
-        <div className="mt-4 pt-4 border-t">
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <CheckCircle size={12} className="text-green-600" />
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Dumbbell size={12} className="text-blue-600" />
-              <span>Scheduled</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <XCircle size={12} className="text-red-600" />
-              <span>Missed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <XCircle size={12} className="text-orange-600" />
-              <span>Skipped</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Moon size={12} className="text-muted-foreground" />
-              <span>Rest</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <SkipForward size={12} className="text-muted-foreground" />
-              <span>Skip (Flexible Plan)</span>
-            </div>
-          </div>
-        </div>
 
         {/* Skip Day Dialog */}
         <Dialog open={skipDialogOpen} onOpenChange={setSkipDialogOpen}>

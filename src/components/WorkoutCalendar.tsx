@@ -35,26 +35,26 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
 
   const getDayStatus = (date: Date, scheduleDay?: ScheduleDay) => {
     if (!scheduleDay) {
-      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30", label: "Rest" };
+      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30 text-foreground", label: "Rest" };
     }
 
     if (scheduleDay.was_skipped) {
-      return { icon: XCircle, color: "text-orange-600", bgColor: "bg-orange-100", label: "Skipped" };
+      return { icon: XCircle, color: "text-orange-700", bgColor: "bg-orange-200 text-slate-900", label: "Skipped" };
     }
 
     if (scheduleDay.is_completed) {
-      return { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100", label: "Completed" };
+      return { icon: CheckCircle, color: "text-green-700", bgColor: "bg-green-200 text-slate-900", label: "Completed" };
     }
 
     if (scheduleDay.is_rest_day) {
-      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30", label: "Rest" };
+      return { icon: Moon, color: "text-muted-foreground", bgColor: "bg-muted/30 text-foreground", label: "Rest" };
     }
 
     if (isPast(date) && !isToday(date)) {
-      return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-100", label: "Missed" };
+      return { icon: XCircle, color: "text-red-700", bgColor: "bg-red-200 text-slate-900", label: "Missed" };
     }
 
-    return { icon: Dumbbell, color: "text-blue-600", bgColor: "bg-blue-100", label: "Scheduled" };
+    return { icon: Dumbbell, color: "text-blue-700", bgColor: "bg-blue-200 text-slate-900", label: "Scheduled" };
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -140,15 +140,14 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
                 {/* Day cells */}
                 {getWeekDays().map((date, index) => {
                   const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
-                  const { icon: StatusIcon, color, bgColor } = getDayStatus(date, scheduleDay);
+                  const { bgColor } = getDayStatus(date, scheduleDay);
                   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                   
                   return (
                     <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} className="flex flex-col items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                      <div className={`w-8 h-4 rounded-sm flex items-center justify-center border-2 ${
                         isToday(date) ? 'border-primary' : 'border-border'
                       } ${bgColor} transition-colors`}>
-                        <StatusIcon size={12} className={color} />
                       </div>
                       <div className="text-xs mt-1 text-center truncate max-w-full">
                         {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day && (
@@ -170,31 +169,7 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
           </div>
         )}
         
-        {/* Legend */}
-        <div className="mt-4 pt-4 border-t">
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <CheckCircle size={12} className="text-green-600" />
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Dumbbell size={12} className="text-blue-600" />
-              <span>Scheduled</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <XCircle size={12} className="text-red-600" />
-              <span>Missed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <XCircle size={12} className="text-orange-600" />
-              <span>Skipped</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Moon size={12} className="text-muted-foreground" />
-              <span>Rest</span>
-            </div>
-          </div>
-        </div>
+        
       </CardContent>
     </Card>
   );
