@@ -122,16 +122,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       const parsedSkips: SkippedDay[] = storedSkips ? JSON.parse(storedSkips) : [];
       setSkippedDays(parsedSkips);
 
-      // Generate schedule for the week
-      const generatedSchedule = generateWeekSchedule(
-        assignments || [],
-        sessions || [],
-        parsedSkips,
-        weekStart,
-        weekEnd
-      );
-      
-      // Generate routine-based schedules
+      // Generate routine-based schedules (one row per active assignment)
       const routineBasedSchedules = generateRoutineSchedules(
         assignments || [],
         sessions || [],
@@ -140,11 +131,13 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         weekEnd
       );
       
-      console.log('Generated schedule:', generatedSchedule);
       console.log('Generated routine schedules count:', routineBasedSchedules.length,
         routineBasedSchedules.map((r) => ({ assignment_id: r.assignment_id, routine_name: r.routine_name, days: r.schedule.length })));
-      setSchedule(generatedSchedule);
       setRoutineSchedules(routineBasedSchedules);
+      
+      // Keep flat schedule for backward compatibility (first assignment per day)
+      const flatSchedule = routineBasedSchedules.flatMap(row => row.schedule);
+      setSchedule(flatSchedule);
     } catch (error) {
       console.error('Error fetching schedule data:', error);
       setSchedule([]);
@@ -153,138 +146,6 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
     }
   };
 
-  const generateWeekSchedule = (
-    assignments: any[],
-    sessions: WorkoutSession[],
-    skipped: SkippedDay[],
-    weekStart: Date,
-    weekEnd: Date
-  ): ScheduleDay[] => {
-    const schedule: ScheduleDay[] = [];
-    
-    // Generate schedule for each day of the week
-    let currentDate = weekStart;
-    while (currentDate <= weekEnd) {
-      const dateStr = format(currentDate, 'yyyy-MM-dd');
-      let daySchedule: ScheduleDay | null = null;
-
-      // Check each active assignment
-      for (const assignment of assignments) {
-        const assignmentStart = new Date(assignment.start_date);
-        
-        // Only generate schedule for dates after assignment start
-        if (currentDate >= assignmentStart) {
-          const routine = assignment.workout_routines;
-          const routineDays = routine.routine_days.sort((a: RoutineDay, b: RoutineDay) => a.day_number - b.day_number);
-          
-          // Check if this day was skipped
-          const wasSkipped = skipped.some(skip => 
-            skip.date === dateStr && skip.assignment_id === assignment.id
-          );
-
-          if (wasSkipped) {
-            daySchedule = {
-              id: `${assignment.id}-${dateStr}`,
-              assignment_id: assignment.id,
-              scheduled_date: dateStr,
-              is_rest_day: true,
-              is_completed: false,
-              was_skipped: true,
-              assignment: { plan_type: assignment.plan_type }
-            };
-            break;
-          }
-
-          // Generate based on plan type
-          if (assignment.plan_type === 'strict') {
-            // Strict plan: Based on days of week
-            const dayOfWeek = currentDate.getDay(); // 0=Sunday, 1=Monday, etc.
-            const mondayBasedDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to Monday=1 system
-            
-            if (mondayBasedDay <= routine.days_per_week) {
-              const routineDay = routineDays[mondayBasedDay - 1];
-              if (routineDay) {
-                daySchedule = {
-                  id: `${assignment.id}-${dateStr}`,
-                  assignment_id: assignment.id,
-                  scheduled_date: dateStr,
-                  is_rest_day: false,
-                  is_completed: false,
-                  was_skipped: false,
-                  routine_day: {
-                    name: routineDay.name,
-                    description: routineDay.description
-                  },
-                  assignment: { plan_type: assignment.plan_type }
-                };
-              }
-            } else {
-              // Rest day for strict plan
-              daySchedule = {
-                id: `${assignment.id}-${dateStr}`,
-                assignment_id: assignment.id,
-                scheduled_date: dateStr,
-                is_rest_day: true,
-                is_completed: false,
-                was_skipped: false,
-                assignment: { plan_type: assignment.plan_type }
-              };
-            }
-          } else {
-            // Flexible plan: Cycle through routine days
-            const daysSinceStart = Math.floor((currentDate.getTime() - assignmentStart.getTime()) / (1000 * 60 * 60 * 24));
-            // Adjust days since start by subtracting skipped days before this date
-            const skippedDaysBeforeThis = skipped.filter(skip => 
-              skip.assignment_id === assignment.id && 
-              new Date(skip.date) < currentDate
-            ).length;
-            
-            const adjustedDaysSinceStart = daysSinceStart - skippedDaysBeforeThis;
-            const routineDay = routineDays[adjustedDaysSinceStart % routineDays.length];
-            
-            if (routineDay) {
-              daySchedule = {
-                id: `${assignment.id}-${dateStr}`,
-                assignment_id: assignment.id,
-                scheduled_date: dateStr,
-                is_rest_day: false,
-                is_completed: false,
-                was_skipped: false,
-                routine_day: {
-                  name: routineDay.name,
-                  description: routineDay.description
-                },
-                assignment: { plan_type: assignment.plan_type }
-              };
-            }
-          }
-          break; // Only use the first active assignment for each day
-        }
-      }
-
-      // Check if there's a completed workout session for this day
-      if (daySchedule) {
-        const session = sessions.find(s => 
-          isSameDay(new Date(s.start_time), currentDate)
-        );
-        
-        if (session) {
-          daySchedule.is_completed = true;
-          daySchedule.workout_session = {
-            name: session.name
-          };
-        }
-      }
-
-      if (daySchedule) {
-        schedule.push(daySchedule);
-      }
-
-      currentDate = addDays(currentDate, 1);
-    }
-
-    return schedule;
-  };
 
   const skipDay = (date: string, assignmentId: string) => {
     const newSkip: SkippedDay = { date, assignment_id: assignmentId };
