@@ -47,6 +47,12 @@ export interface ScheduleDay {
   };
 }
 
+export interface RoutineSchedule {
+  routine_name: string;
+  assignment_id: string;
+  schedule: ScheduleDay[];
+}
+
 interface SkippedDay {
   date: string;
   assignment_id: string;
@@ -54,6 +60,7 @@ interface SkippedDay {
 
 export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
+  const [routineSchedules, setRoutineSchedules] = useState<RoutineSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [skippedDays, setSkippedDays] = useState<SkippedDay[]>([]);
 
@@ -81,6 +88,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
           start_date,
           is_active,
           workout_routines (
+            name,
             days_per_week,
             routine_days (
               id,
@@ -121,8 +129,19 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         weekEnd
       );
       
+      // Generate routine-based schedules
+      const routineBasedSchedules = generateRoutineSchedules(
+        assignments || [],
+        sessions || [],
+        parsedSkips,
+        weekStart,
+        weekEnd
+      );
+      
       console.log('Generated schedule:', generatedSchedule);
+      console.log('Generated routine schedules:', routineBasedSchedules);
       setSchedule(generatedSchedule);
+      setRoutineSchedules(routineBasedSchedules);
     } catch (error) {
       console.error('Error fetching schedule data:', error);
       setSchedule([]);
@@ -276,8 +295,144 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
     fetchAndGenerateSchedule();
   };
 
+  const generateRoutineSchedules = (
+    assignments: any[],
+    sessions: WorkoutSession[],
+    skipped: SkippedDay[],
+    weekStart: Date,
+    weekEnd: Date
+  ): RoutineSchedule[] => {
+    return assignments.map(assignment => {
+      const routine = assignment.workout_routines;
+      const routineName = routine?.name || 'Unnamed Routine';
+      
+      const routineSchedule: ScheduleDay[] = [];
+      
+      // Generate schedule for each day of the week for this specific routine
+      let currentDate = weekStart;
+      while (currentDate <= weekEnd) {
+        const dateStr = format(currentDate, 'yyyy-MM-dd');
+        const assignmentStart = new Date(assignment.start_date);
+        
+        // Only generate schedule for dates after assignment start
+        if (currentDate >= assignmentStart) {
+          const routineDays = routine?.routine_days?.sort((a: RoutineDay, b: RoutineDay) => a.day_number - b.day_number) || [];
+          
+          // Check if this day was skipped
+          const wasSkipped = skipped.some(skip => 
+            skip.date === dateStr && skip.assignment_id === assignment.id
+          );
+
+          let daySchedule: ScheduleDay | null = null;
+
+          if (wasSkipped) {
+            daySchedule = {
+              id: `${assignment.id}-${dateStr}`,
+              assignment_id: assignment.id,
+              scheduled_date: dateStr,
+              is_rest_day: true,
+              is_completed: false,
+              was_skipped: true,
+              assignment: { plan_type: assignment.plan_type }
+            };
+          } else {
+            // Generate based on plan type
+            if (assignment.plan_type === 'strict') {
+              // Strict plan: Based on days of week
+              const dayOfWeek = currentDate.getDay(); // 0=Sunday, 1=Monday, etc.
+              const mondayBasedDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert to Monday=1 system
+              
+              if (mondayBasedDay <= (routine?.days_per_week || 0)) {
+                const routineDay = routineDays[mondayBasedDay - 1];
+                if (routineDay) {
+                  daySchedule = {
+                    id: `${assignment.id}-${dateStr}`,
+                    assignment_id: assignment.id,
+                    scheduled_date: dateStr,
+                    is_rest_day: false,
+                    is_completed: false,
+                    was_skipped: false,
+                    routine_day: {
+                      name: routineDay.name,
+                      description: routineDay.description
+                    },
+                    assignment: { plan_type: assignment.plan_type }
+                  };
+                }
+              } else {
+                // Rest day for strict plan
+                daySchedule = {
+                  id: `${assignment.id}-${dateStr}`,
+                  assignment_id: assignment.id,
+                  scheduled_date: dateStr,
+                  is_rest_day: true,
+                  is_completed: false,
+                  was_skipped: false,
+                  assignment: { plan_type: assignment.plan_type }
+                };
+              }
+            } else {
+              // Flexible plan: Cycle through routine days
+              const daysSinceStart = Math.floor((currentDate.getTime() - assignmentStart.getTime()) / (1000 * 60 * 60 * 24));
+              // Adjust days since start by subtracting skipped days before this date
+              const skippedDaysBeforeThis = skipped.filter(skip => 
+                skip.assignment_id === assignment.id && 
+                new Date(skip.date) < currentDate
+              ).length;
+              
+              const adjustedDaysSinceStart = daysSinceStart - skippedDaysBeforeThis;
+              const routineDay = routineDays[adjustedDaysSinceStart % routineDays.length];
+              
+              if (routineDay) {
+                daySchedule = {
+                  id: `${assignment.id}-${dateStr}`,
+                  assignment_id: assignment.id,
+                  scheduled_date: dateStr,
+                  is_rest_day: false,
+                  is_completed: false,
+                  was_skipped: false,
+                  routine_day: {
+                    name: routineDay.name,
+                    description: routineDay.description
+                  },
+                  assignment: { plan_type: assignment.plan_type }
+                };
+              }
+            }
+          }
+
+          // Check if there's a completed workout session for this day
+          if (daySchedule) {
+            const session = sessions.find(s => 
+              isSameDay(new Date(s.start_time), currentDate) && 
+              (!s.routine_day_id || routineDays.some((rd: RoutineDay) => rd.id === s.routine_day_id))
+            );
+            
+            if (session) {
+              daySchedule.is_completed = true;
+              daySchedule.workout_session = {
+                name: session.name
+              };
+            }
+
+            routineSchedule.push(daySchedule);
+          }
+        }
+        
+        currentDate = addDays(currentDate, 1);
+      }
+      
+      return {
+        routine_name: routineName,
+        assignment_id: assignment.id,
+        schedule: routineSchedule
+      };
+    });
+  };
+
   return {
     schedule,
+    routineSchedules,
     loading,
     skipDay,
     refreshSchedule: fetchAndGenerateSchedule

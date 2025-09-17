@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Moon, CheckCircle, XCircle } from "lucide-react";
-import { useWorkoutSchedule, type ScheduleDay } from "@/hooks/useWorkoutSchedule";
+import { useWorkoutSchedule, type ScheduleDay, type RoutineSchedule } from "@/hooks/useWorkoutSchedule";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isPast, addWeeks, subWeeks } from "date-fns";
 
 interface WorkoutCalendarProps {
@@ -14,7 +14,7 @@ interface WorkoutCalendarProps {
 export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   
-  const { schedule, loading } = useWorkoutSchedule(
+  const { schedule, routineSchedules, loading } = useWorkoutSchedule(
     canSeeWorkoutHistory ? clientId : '', 
     currentWeek
   );
@@ -26,8 +26,9 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
   };
 
-  const getScheduleForDay = (date: Date) => {
-    return schedule.find(s => 
+  const getScheduleForDay = (date: Date, routineSchedule?: ScheduleDay[]) => {
+    const scheduleToCheck = routineSchedule || schedule;
+    return scheduleToCheck.find(s => 
       isSameDay(new Date(s.scheduled_date), date)
     );
   };
@@ -106,56 +107,66 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="grid grid-cols-7 gap-2">
-            {Array.from({ length: 7 }).map((_, i) => (
+          <div className="space-y-3">
+            {[1, 2].map(i => (
               <div key={i} className="animate-pulse">
-                <div className="h-20 bg-muted rounded"></div>
+                <div className="h-12 bg-muted rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : routineSchedules.length > 0 ? (
+          <div className="space-y-4">
+            {/* Day headers */}
+            <div className="grid grid-cols-8 gap-2 mb-2">
+              <div className="text-xs font-medium text-muted-foreground"></div>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                <div key={day} className="text-center">
+                  <div className="text-xs font-medium text-muted-foreground">{day}</div>
+                  <div className={`text-sm font-medium ${isToday(getWeekDays()[index]) ? 'text-primary' : 'text-foreground'}`}>
+                    {format(getWeekDays()[index], 'd')}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Routine rows */}
+            {routineSchedules.map((routineSchedule) => (
+              <div key={routineSchedule.assignment_id} className="grid grid-cols-8 gap-2 items-center">
+                {/* Routine name */}
+                <div className="text-sm font-medium text-foreground pr-2 truncate">
+                  {routineSchedule.routine_name}
+                </div>
+                
+                {/* Day cells */}
+                {getWeekDays().map((date, index) => {
+                  const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
+                  const { icon: StatusIcon, color, bgColor } = getDayStatus(date, scheduleDay);
+                  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                  
+                  return (
+                    <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                        isToday(date) ? 'border-primary' : 'border-border'
+                      } ${bgColor} transition-colors`}>
+                        <StatusIcon size={12} className={color} />
+                      </div>
+                      <div className="text-xs mt-1 text-center truncate max-w-full">
+                        {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day && (
+                          <span className="text-foreground font-medium">
+                            {scheduleDay.routine_day.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-2">
-            {getWeekDays().map((date, index) => {
-              const scheduleDay = getScheduleForDay(date);
-              const { icon: StatusIcon, color, bgColor, label } = getDayStatus(date, scheduleDay);
-              const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-              
-              return (
-                <div key={date.toISOString()} className="space-y-1">
-                  <div className="text-center">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {dayNames[index]}
-                    </div>
-                    <div className={`text-sm font-medium ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
-                      {format(date, 'd')}
-                    </div>
-                  </div>
-                  
-                  <div className={`min-h-[80px] p-2 rounded-lg border-2 ${
-                    isToday(date) ? 'border-primary' : 'border-border'
-                  } ${bgColor} transition-colors`}>
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <StatusIcon size={16} className={`mb-1 ${color}`} />
-                      <div className="text-xs font-medium">{label}</div>
-                      
-                      {scheduleDay && !scheduleDay.is_rest_day && (
-                        <div className="mt-1">
-                          {scheduleDay.workout_session ? (
-                            <Badge variant="secondary" className="text-xs px-1 py-0">
-                              {scheduleDay.workout_session.name}
-                            </Badge>
-                          ) : scheduleDay.routine_day ? (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              {scheduleDay.routine_day.name}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="text-center py-8 text-muted-foreground">
+            <Calendar size={32} className="mx-auto mb-2" />
+            <p>No workout schedule available</p>
           </div>
         )}
         
