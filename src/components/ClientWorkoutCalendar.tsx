@@ -22,7 +22,8 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
   
   console.log('ClientWorkoutCalendar - user:', user?.id, 'currentWeek:', currentWeek);
   
-  const { schedule, loading, skipDay } = useWorkoutSchedule(user?.id || '', currentWeek);
+  const { schedule, routineSchedules, loading, skipDay } = useWorkoutSchedule(user?.id || '', currentWeek);
+  console.log('RoutineSchedules in ClientWorkoutCalendar:', routineSchedules?.length, routineSchedules?.map(r => ({ assignment_id: r.assignment_id, routine_name: r.routine_name })));
 
 
   const getWeekDays = () => {
@@ -35,6 +36,11 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
     return schedule.find(s => 
       isSameDay(new Date(s.scheduled_date), date)
     );
+  };
+
+  const getScheduleForDayForAssignment = (assignmentId: string, date: Date) => {
+    const row = routineSchedules.find(r => r.assignment_id === assignmentId);
+    return row?.schedule.find(s => isSameDay(new Date(s.scheduled_date), date));
   };
 
   const getDayStatus = (date: Date, scheduleDay?: ScheduleDay) => {
@@ -139,81 +145,87 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-2">
-            {getWeekDays().map((date, index) => {
-              const scheduleDay = getScheduleForDay(date);
-              const { icon: StatusIcon, color, bgColor, label } = getDayStatus(date, scheduleDay);
-              const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-              
-              return (
-                <div key={date.toISOString()} className="space-y-1">
-                  <div className="text-center">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {dayNames[index]}
-                    </div>
-                    <div className={`text-sm font-medium ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
-                      {format(date, 'd')}
-                    </div>
-                  </div>
-                  
-                  <div className={`min-h-[100px] p-2 rounded-lg border-2 ${
-                    isToday(date) ? 'border-primary' : 'border-border'
-                  } ${bgColor} transition-colors relative`}>
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <StatusIcon size={16} className={`mb-1 ${color}`} />
-                      <div className="text-xs font-medium">{label}</div>
-                      
-                      {scheduleDay && !scheduleDay.is_rest_day && (
-                        <div className="mt-1">
-                          {scheduleDay.workout_session ? (
-                            <Badge variant="secondary" className="text-xs px-1 py-0">
-                              {scheduleDay.workout_session.name}
-                            </Badge>
-                          ) : scheduleDay.routine_day ? (
-                            <Badge variant="outline" className="text-xs px-1 py-0">
-                              {scheduleDay.routine_day.name}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      )}
-
-                      {/* Action buttons */}
-                      {scheduleDay && (
-                        <div className="absolute bottom-1 right-1">
-                          {canSkipDay(scheduleDay, date) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                setSelectedSkipDay(scheduleDay);
-                                setSkipDialogOpen(true);
-                              }}
-                            >
-                              <SkipForward size={12} />
-                            </Button>
-                          )}
-                          
-                          {isToday(date) && !scheduleDay.is_completed && !scheduleDay.is_rest_day && !scheduleDay.was_skipped && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 ml-1"
-                              onClick={() => {
-                                // Navigate to start workout
-                                window.location.href = '/start-workout';
-                              }}
-                            >
-                              <Play size={12} />
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+          <div className="space-y-6">
+            {routineSchedules.map((row) => (
+              <div key={row.assignment_id}>
+                <div className="mb-2 text-sm font-medium text-muted-foreground">
+                  {row.routine_name}
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-7 gap-2">
+                  {getWeekDays().map((date, index) => {
+                    const scheduleDay = getScheduleForDayForAssignment(row.assignment_id, date);
+                    const { icon: StatusIcon, color, bgColor, label } = getDayStatus(date, scheduleDay);
+                    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+                    return (
+                      <div key={date.toISOString()} className="space-y-1">
+                        <div className="text-center">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {dayNames[index]}
+                          </div>
+                          <div className={`text-sm font-medium ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
+                            {format(date, 'd')}
+                          </div>
+                        </div>
+
+                        <div className={`min-h-[100px] p-2 rounded-lg border-2 ${
+                          isToday(date) ? 'border-primary' : 'border-border'
+                        } ${bgColor} transition-colors relative`}>
+                          <div className="flex flex-col items-center justify-center h-full text-center">
+                            <StatusIcon size={16} className={`mb-1 ${color}`} />
+                            <div className="text-xs font-medium">{label}</div>
+
+                            {scheduleDay && !scheduleDay.is_rest_day && (
+                              <div className="mt-1">
+                                {scheduleDay.workout_session ? (
+                                  <Badge variant="secondary" className="text-xs px-1 py-0">
+                                    {scheduleDay.workout_session.name}
+                                  </Badge>
+                                ) : scheduleDay.routine_day ? (
+                                  <Badge variant="outline" className="text-xs px-1 py-0">
+                                    {scheduleDay.routine_day.name}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            )}
+
+                            {scheduleDay && (
+                              <div className="absolute bottom-1 right-1">
+                                {canSkipDay(scheduleDay, date) && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => {
+                                      setSelectedSkipDay(scheduleDay);
+                                      setSkipDialogOpen(true);
+                                    }}
+                                  >
+                                    <SkipForward size={12} />
+                                  </Button>
+                                )}
+                                {isToday(date) && !scheduleDay.is_completed && !scheduleDay.is_rest_day && !scheduleDay.was_skipped && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 ml-1"
+                                    onClick={() => {
+                                      window.location.href = '/start-workout';
+                                    }}
+                                  >
+                                    <Play size={12} />
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
         

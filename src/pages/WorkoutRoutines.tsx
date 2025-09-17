@@ -15,7 +15,6 @@ interface WorkoutRoutine {
   id: string;
   name: string;
   description: string;
-  is_active: boolean;
   is_public: boolean;
   days_per_week: number;
   user_id: string;
@@ -36,6 +35,7 @@ const WorkoutRoutines = () => {
   const [loading, setLoading] = useState(true);
   const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
   const [selectedRoutineForActivation, setSelectedRoutineForActivation] = useState<{id: string, name: string} | null>(null);
+  const [activeRoutineIds, setActiveRoutineIds] = useState<Set<string>>(new Set());
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,7 +59,6 @@ const WorkoutRoutines = () => {
           )
         `)
         .eq('user_id', user.id)
-        .order('is_active', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (userError) throw userError;
@@ -71,7 +70,6 @@ const WorkoutRoutines = () => {
           id,
           name,
           description,
-          is_active,
           is_public,
           days_per_week,
           user_id,
@@ -106,6 +104,18 @@ const WorkoutRoutines = () => {
 
       setMyRoutines(userRoutines || []);
       setPublicRoutines(publicRoutinesWithProfiles as WorkoutRoutine[]);
+
+      // Fetch active assignments to determine which routines are active for this user
+      const { data: activeAssignments, error: activeErr } = await supabase
+        .from('client_routine_assignments')
+        .select('routine_id')
+        .eq('client_id', user.id)
+        .eq('is_active', true);
+
+      if (activeErr) throw activeErr;
+
+      const activeSet = new Set<string>((activeAssignments || []).map((a: any) => a.routine_id));
+      setActiveRoutineIds(activeSet);
     } catch (error) {
       console.error('Error fetching routines:', error);
       toast({
@@ -120,10 +130,8 @@ const WorkoutRoutines = () => {
 
   const handleActivateRoutine = (routineId: string, routineName: string, currentActive: boolean) => {
     if (currentActive) {
-      // If deactivating, do it directly
       deactivateRoutine(routineId);
     } else {
-      // If activating, show plan type dialog
       setSelectedRoutineForActivation({ id: routineId, name: routineName });
       setIsPlanTypeDialogOpen(true);
     }
@@ -131,10 +139,12 @@ const WorkoutRoutines = () => {
 
   const deactivateRoutine = async (routineId: string) => {
     try {
+      if (!user) return;
       const { error } = await supabase
-        .from('workout_routines')
+        .from('client_routine_assignments')
         .update({ is_active: false })
-        .eq('id', routineId);
+        .eq('client_id', user.id)
+        .eq('routine_id', routineId);
 
       if (error) throw error;
 
@@ -142,7 +152,7 @@ const WorkoutRoutines = () => {
       
       toast({
         title: "Routine Deactivated",
-        description: "This routine is no longer active"
+        description: "This routine is no longer active for you"
       });
     } catch (error) {
       console.error('Error deactivating routine:', error);
@@ -160,21 +170,12 @@ const WorkoutRoutines = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      // Activate this routine
-      const { error: routineError } = await supabase
-        .from('workout_routines')
-        .update({ is_active: true })
-        .eq('id', selectedRoutineForActivation.id);
-
-      if (routineError) throw routineError;
-
       // Check if assignment already exists for this routine and date
       const { data: existingAssignment, error: checkError } = await supabase
         .from('client_routine_assignments')
         .select('id, is_active')
         .eq('client_id', user.id)
         .eq('routine_id', selectedRoutineForActivation.id)
-        .eq('start_date', today)
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -236,8 +237,7 @@ const WorkoutRoutines = () => {
           name: `${routine.name} (Copy)`,
           description: routine.description,
           days_per_week: routine.days_per_week,
-          is_public: false,
-          is_active: false
+          is_public: false
         })
         .select()
         .single();
@@ -300,13 +300,15 @@ const WorkoutRoutines = () => {
       (total, day) => total + day.routine_exercises.length, 0
     );
 
+    const isActive = activeRoutineIds.has(routine.id);
+
     return (
       <Card className="p-6 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
               <h3 className="text-lg font-semibold">{routine.name}</h3>
-              {routine.is_active && (
+              {isActive && (
                 <Badge className="bg-gradient-primary text-primary-foreground">Active</Badge>
               )}
               {routine.is_public && (
@@ -353,16 +355,19 @@ const WorkoutRoutines = () => {
               <>
                 <Button
                   size="sm"
-                  variant={routine.is_active ? "default" : "outline"}
-                  onClick={() => handleActivateRoutine(routine.id, routine.name, routine.is_active)}
+                  variant={isActive ? "default" : "outline"}
+                  onClick={() => handleActivateRoutine(routine.id, routine.name, isActive)}
                 >
-                  {routine.is_active ? (
+                  {isActive ? (
                     <>
                       <Play size={14} className="mr-1" />
                       Active
                     </>
                   ) : (
-                    "Activate"
+                    <>
+                      <Play size={14} className="mr-1" />
+                      Activate
+                    </>
                   )}
                 </Button>
                 <Link to={`/routines/${routine.id}/edit`}>

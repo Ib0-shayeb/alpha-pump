@@ -180,7 +180,6 @@ const Dashboard = () => {
     { label: "Workouts This Week", value: "3", icon: Dumbbell, color: "text-primary" },
     { label: "Current Streak", value: "5 days", icon: Target, color: "text-workout-complete" },
     { label: "Total Workouts", value: "24", icon: Trophy, color: "text-accent" },
-    { label: "Active Routines", value: activeRoutines.length.toString(), icon: Calendar, color: "text-secondary-foreground" },
   ];
 
   return (
@@ -221,69 +220,7 @@ const Dashboard = () => {
           <ClientWorkoutCalendar />
         )}
 
-        {/* Active Routines for Clients */}
-        {userRole === 'client' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Active Routines</h3>
-            {routinesLoading ? (
-              <Card className="p-4 bg-gradient-card shadow-card border-border/50">
-                <div className="animate-pulse space-y-3">
-                  <div className="h-4 bg-muted rounded w-1/2"></div>
-                  <div className="h-3 bg-muted rounded w-2/3"></div>
-                </div>
-              </Card>
-            ) : activeRoutines.length > 0 ? (
-              <div className="space-y-3">
-                {activeRoutines.map((assignment) => (
-                  <Card key={assignment.id} className="p-4 bg-gradient-card shadow-card border-border/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold">{assignment.routine.name}</h4>
-                          <Badge variant={assignment.plan_type === 'flexible' ? 'secondary' : 'default'}>
-                            {assignment.plan_type === 'flexible' ? (
-                              <>
-                                <SkipForward size={12} className="mr-1" />
-                                Flexible Plan
-                              </>
-                            ) : (
-                              <>
-                                <Shield size={12} className="mr-1" />
-                                Strict Plan
-                              </>
-                            )}
-                          </Badge>
-                        </div>
-                        {assignment.routine.description && (
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {assignment.routine.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar size={12} />
-                            {assignment.routine.days_per_week} days/week
-                          </span>
-                          <span>
-                            Started: {new Date(assignment.start_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-4 bg-gradient-card shadow-card border-border/50">
-                <div className="text-center py-4">
-                  <Calendar size={32} className="mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-muted-foreground">No active routines</p>
-                  <p className="text-sm text-muted-foreground">Visit the routines page to activate a routine</p>
-                </div>
-              </Card>
-            )}
-          </div>
-        )}
+        {/* Active Routines section removed for clients */}
 
         {/* Recent Activity */}
         <div className="space-y-4">

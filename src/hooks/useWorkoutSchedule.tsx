@@ -104,6 +104,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       if (assignmentError) throw assignmentError;
       
       console.log('Fetched assignments:', assignments);
+      console.log('Assignments count:', Array.isArray(assignments) ? assignments.length : 0,
+        Array.isArray(assignments) ? assignments.map((a: any) => ({ id: a.id, routine_id: a.routine_id, plan_type: a.plan_type })) : []);
 
       // Fetch completed workout sessions for the week
       const { data: sessions, error: sessionError } = await supabase
@@ -139,7 +141,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       );
       
       console.log('Generated schedule:', generatedSchedule);
-      console.log('Generated routine schedules:', routineBasedSchedules);
+      console.log('Generated routine schedules count:', routineBasedSchedules.length,
+        routineBasedSchedules.map((r) => ({ assignment_id: r.assignment_id, routine_name: r.routine_name, days: r.schedule.length })));
       setSchedule(generatedSchedule);
       setRoutineSchedules(routineBasedSchedules);
     } catch (error) {
