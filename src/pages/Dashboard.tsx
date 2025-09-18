@@ -2,7 +2,7 @@ import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Dumbbell, Calendar, Trophy, Target, Users, Shield, SkipForward } from "lucide-react";
+import { Plus, Dumbbell, Calendar, Trophy, Target, Users, Shield, SkipForward, Bot, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -198,6 +198,36 @@ const Dashboard = () => {
             </Button>
           </Link>
         </div>
+
+        {/* AI Trainer Access */}
+        {userRole === 'client' && (
+          <Card className="border-2 border-primary/20 bg-gradient-to-r from-background to-primary/5 shadow-card">
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                    <Bot className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      AI Fitness Coach
+                      <Badge variant="default" className="bg-gradient-to-r from-primary to-primary/80">
+                        <Zap className="w-3 h-3 mr-1" />
+                        AI
+                      </Badge>
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Get personalized fitness guidance 24/7</p>
+                  </div>
+                </div>
+                <Link to="/ai-trainer">
+                  <Button variant="default" size="sm">
+                    Chat Now
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
