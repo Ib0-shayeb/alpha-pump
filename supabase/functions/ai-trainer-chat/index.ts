@@ -12,10 +12,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log('AI Trainer Chat function called')
+    
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
     if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not configured')
       throw new Error('GEMINI_API_KEY is not configured')
     }
+    
+    console.log('GEMINI_API_KEY found')
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -32,19 +37,25 @@ serve(async (req) => {
     }
 
     const { message, conversationId } = await req.json()
+    console.log('Request body parsed:', { message: message?.slice(0, 50), conversationId })
 
     if (!message) {
+      console.error('No message provided in request')
       return new Response('Missing message', { status: 400, headers: corsHeaders })
     }
 
     console.log('Received message from user:', user.id, 'Message:', message)
 
     // Get user profile and fitness data for context
-    const { data: profile } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('display_name, height, weight, date_of_birth, gender, activity_level, fitness_goals, preferred_units')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('Error fetching profile:', profileError)
+    }
 
     // Get recent workout sessions for context
     const { data: recentWorkouts } = await supabaseClient
@@ -175,8 +186,8 @@ Remember: You have access to their complete fitness journey data, so make your a
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Gemini API error:', response.status, errorText)
-      throw new Error(`Gemini API error: ${response.status}`)
+      console.error('Gemini API error:', response.status, response.statusText, errorText)
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
