@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Users, UserPlus, Send, Bot, Zap } from "lucide-react";
+import { Search, Users, UserPlus, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -182,41 +182,6 @@ export const TrainerView = () => {
         </TabsList>
 
         <TabsContent value="clients" className="space-y-4">
-          {/* AI Trainer Card */}
-          <Card className="border-2 border-primary/20 bg-gradient-to-r from-background to-primary/5">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                      <Bot className="w-6 h-6" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2">
-                      AI Fitness Coach
-                      <Badge variant="default" className="bg-gradient-to-r from-primary to-primary/80">
-                        <Zap className="w-3 h-3 mr-1" />
-                        AI
-                      </Badge>
-                    </h3>
-                    <p className="text-sm text-muted-foreground">Your 24/7 personal AI fitness coach</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="default">Connected</Badge>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => navigate('/ai-trainer')}
-                  >
-                    Chat Now
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
