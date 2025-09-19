@@ -124,7 +124,7 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
                     {routineSchedule.routine_name}
                   </h3>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-7 gap-1">
                     {getWeekDays().map((date, index) => {
                       const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
                       const { bgColor, icon: Icon, label } = getDayStatus(date, scheduleDay);
@@ -132,27 +132,32 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
                       
                       return (
                         <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} 
-                             className={`p-3 rounded-lg border-2 ${
+                             className={`p-2 rounded-lg border-2 ${
                                isToday(date) ? 'border-primary' : 'border-border'
-                             } ${bgColor} transition-colors`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground">
-                                {dayNames[index]}
-                              </div>
-                              <div className={`text-sm font-semibold ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
-                                {format(date, 'd')}
-                              </div>
+                             } ${bgColor} transition-colors min-h-[120px] flex flex-col items-center justify-between`}>
+                          
+                          {/* Day and Date */}
+                          <div className="text-center mb-1">
+                            <div className="text-[10px] font-medium text-muted-foreground">
+                              {dayNames[index]}
                             </div>
-                            <Icon size={16} className="text-current" />
+                            <div className={`text-xs font-semibold ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
+                              {format(date, 'd')}
+                            </div>
                           </div>
                           
-                          <div className="text-xs font-medium text-current">
-                            {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day ? (
-                              scheduleDay.routine_day.name
-                            ) : (
-                              label
-                            )}
+                          {/* Icon */}
+                          <Icon size={14} className="text-current mb-1" />
+                          
+                          {/* Vertical Text */}
+                          <div className="flex-1 flex items-center justify-center">
+                            <div className="text-[10px] font-medium text-current transform -rotate-90 whitespace-nowrap">
+                              {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day ? (
+                                scheduleDay.routine_day.name
+                              ) : (
+                                label
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
