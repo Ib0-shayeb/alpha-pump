@@ -113,21 +113,23 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
             <Calendar size={20} />
             My Workout Schedule
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateWeek('prev')}
+              className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
             >
               <ChevronLeft size={16} />
             </Button>
-            <span className="text-sm font-medium min-w-[120px] text-center">
+            <span className="text-xs sm:text-sm font-medium min-w-[100px] sm:min-w-[120px] text-center px-1">
               {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d')} - {format(endOfWeek(currentWeek, { weekStartsOn: 1 }), 'MMM d, yyyy')}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateWeek('next')}
+              className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
             >
               <ChevronRight size={16} />
             </Button>

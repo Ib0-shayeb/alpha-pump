@@ -309,41 +309,54 @@ const CustomWorkout = () => {
 
                     <div className="space-y-3">
                       {exercise.sets.map((set) => (
-                        <div key={set.id} className="grid grid-cols-5 gap-2 items-center">
-                          <div className="text-sm font-medium">Set {set.set_number}</div>
-                          <Input
-                            type="number"
-                            placeholder="Weight"
-                            value={set.weight || ""}
-                            onChange={(e) => updateSet(exercise.id, set.id, { 
-                              weight: e.target.value ? parseFloat(e.target.value) : null 
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Reps"
-                            value={set.reps || ""}
-                            onChange={(e) => updateSet(exercise.id, set.id, { 
-                              reps: e.target.value ? parseInt(e.target.value) : null 
-                            })}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="RPE"
-                            min="1"
-                            max="10"
-                            value={set.rpe || ""}
-                            onChange={(e) => updateSet(exercise.id, set.id, { 
-                              rpe: e.target.value ? parseInt(e.target.value) : null 
-                            })}
-                          />
-                          <Button
-                            variant={set.completed ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateSet(exercise.id, set.id, { completed: !set.completed })}
-                          >
-                            <Check size={14} />
-                          </Button>
+                        <div key={set.id} className="space-y-2 sm:space-y-0">
+                          <div className="flex items-center justify-between sm:hidden">
+                            <div className="text-sm font-medium">Set {set.set_number}</div>
+                            <Button
+                              variant={set.completed ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => updateSet(exercise.id, set.id, { completed: !set.completed })}
+                            >
+                              <Check size={14} />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:items-center">
+                            <div className="hidden sm:block text-sm font-medium">Set {set.set_number}</div>
+                            <Input
+                              type="number"
+                              placeholder="Weight"
+                              value={set.weight || ""}
+                              onChange={(e) => updateSet(exercise.id, set.id, { 
+                                weight: e.target.value ? parseFloat(e.target.value) : null 
+                              })}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Reps"
+                              value={set.reps || ""}
+                              onChange={(e) => updateSet(exercise.id, set.id, { 
+                                reps: e.target.value ? parseInt(e.target.value) : null 
+                              })}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="RPE"
+                              min="1"
+                              max="10"
+                              value={set.rpe || ""}
+                              onChange={(e) => updateSet(exercise.id, set.id, { 
+                                rpe: e.target.value ? parseInt(e.target.value) : null 
+                              })}
+                            />
+                            <Button
+                              variant={set.completed ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => updateSet(exercise.id, set.id, { completed: !set.completed })}
+                              className="hidden sm:flex"
+                            >
+                              <Check size={14} />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       
