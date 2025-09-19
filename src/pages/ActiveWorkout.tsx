@@ -10,6 +10,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { handleWorkoutCompletion } from "@/lib/workoutCompletion";
 
 interface WorkoutSet {
   id?: string;
@@ -193,6 +194,9 @@ const ActiveWorkout = () => {
           }
         }
       }
+
+      // Handle flexible plan progression if this is a routine workout
+      await handleWorkoutCompletion(sessionId, routineDay || undefined);
 
       toast({
         title: "Workout Complete!",

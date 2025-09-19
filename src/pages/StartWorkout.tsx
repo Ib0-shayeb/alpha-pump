@@ -46,24 +46,41 @@ const StartWorkout = () => {
         if (routinesError) throw routinesError;
 
         if (activeRoutines && activeRoutines.length > 0) {
-          // Simple logic: calculate which day based on days since routine started
-          // In a real app, you'd want more sophisticated scheduling
           const routine = activeRoutines[0];
-          const today = new Date();
-          const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
           
-          // Map to routine day (simple cycling through days)
-          const routineDay = routine.routine_days[dayOfWeek % routine.routine_days.length];
-          
-          if (routineDay) {
-            setTodaysRoutine({
-              routine_id: routine.id,
-              routine_name: routine.name,
-              day_id: routineDay.id,
-              day_name: routineDay.name,
-              day_number: routineDay.day_number,
-              exercises_count: routineDay.routine_exercises?.length || 0
-            });
+          // Get the active assignment for this routine to determine the current day
+          const { data: assignment, error: assignmentError } = await supabase
+            .from('client_routine_assignments')
+            .select('plan_type, current_day_index')
+            .eq('client_id', user.id)
+            .eq('routine_id', routine.id)
+            .eq('is_active', true)
+            .single();
+
+          if (!assignmentError && assignment) {
+            let routineDay;
+            
+            if (assignment.plan_type === 'flexible') {
+              // Use current_day_index for flexible plans
+              const currentIndex = assignment.current_day_index || 0;
+              routineDay = routine.routine_days[currentIndex % routine.routine_days.length];
+            } else {
+              // For strict plans, use day of week
+              const today = new Date();
+              const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+              routineDay = routine.routine_days[dayOfWeek % routine.routine_days.length];
+            }
+            
+            if (routineDay) {
+              setTodaysRoutine({
+                routine_id: routine.id,
+                routine_name: routine.name,
+                day_id: routineDay.id,
+                day_name: routineDay.name,
+                day_number: routineDay.day_number,
+                exercises_count: routineDay.routine_exercises?.length || 0
+              });
+            }
           }
         }
       } catch (error) {
@@ -80,12 +97,24 @@ const StartWorkout = () => {
     if (!user || !todaysRoutine) return;
     
     try {
+      // Get the active assignment for this routine
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('client_routine_assignments')
+        .select('id')
+        .eq('client_id', user.id)
+        .eq('routine_id', todaysRoutine.routine_id)
+        .eq('is_active', true)
+        .single();
+
+      if (assignmentError) throw assignmentError;
+
       const { data: session, error } = await supabase
         .from('workout_sessions')
         .insert({
           user_id: user.id,
           routine_id: todaysRoutine.routine_id,
           routine_day_id: todaysRoutine.day_id,
+          assignment_id: assignment.id,
           name: todaysRoutine.day_name,
           start_time: new Date().toISOString()
         })
