@@ -116,51 +116,99 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
           </div>
         ) : routineSchedules.length > 0 ? (
           <div className="space-y-4">
-            {/* Day headers */}
-            <div className="grid grid-cols-8 gap-2 mb-2">
-              <div className="text-xs font-medium text-muted-foreground"></div>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                <div key={day} className="text-center">
-                  <div className="text-xs font-medium text-muted-foreground">{day}</div>
-                  <div className={`text-sm font-medium ${isToday(getWeekDays()[index]) ? 'text-primary' : 'text-foreground'}`}>
-                    {format(getWeekDays()[index], 'd')}
+            {/* Mobile-first responsive layout */}
+            <div className="block md:hidden space-y-6">
+              {routineSchedules.map((routineSchedule) => (
+                <div key={routineSchedule.assignment_id} className="space-y-3">
+                  <h3 className="text-base font-semibold text-foreground">
+                    {routineSchedule.routine_name}
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {getWeekDays().map((date, index) => {
+                      const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
+                      const { bgColor, icon: Icon, label } = getDayStatus(date, scheduleDay);
+                      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                      
+                      return (
+                        <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} 
+                             className={`p-3 rounded-lg border-2 ${
+                               isToday(date) ? 'border-primary' : 'border-border'
+                             } ${bgColor} transition-colors`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground">
+                                {dayNames[index]}
+                              </div>
+                              <div className={`text-sm font-semibold ${isToday(date) ? 'text-primary' : 'text-foreground'}`}>
+                                {format(date, 'd')}
+                              </div>
+                            </div>
+                            <Icon size={16} className="text-current" />
+                          </div>
+                          
+                          <div className="text-xs font-medium text-current">
+                            {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day ? (
+                              scheduleDay.routine_day.name
+                            ) : (
+                              label
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
             </div>
-            
-            {/* Routine rows */}
-            {routineSchedules.map((routineSchedule) => (
-              <div key={routineSchedule.assignment_id} className="grid grid-cols-8 gap-2 items-center">
-                {/* Routine name */}
-                <div className="text-sm font-medium text-foreground pr-2 truncate">
-                  {routineSchedule.routine_name}
-                </div>
-                
-                {/* Day cells */}
-                {getWeekDays().map((date, index) => {
-                  const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
-                  const { bgColor } = getDayStatus(date, scheduleDay);
-                  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                  
-                  return (
-                    <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} className="flex flex-col items-center">
-                      <div className={`w-8 h-4 rounded-sm flex items-center justify-center border-2 ${
-                        isToday(date) ? 'border-primary' : 'border-border'
-                      } ${bgColor} transition-colors`}>
-                      </div>
-                      <div className="text-xs mt-1 text-center truncate max-w-full">
-                        {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day && (
-                          <span className="text-foreground font-medium">
-                            {scheduleDay.routine_day.name}
-                          </span>
-                        )}
-                      </div>
+
+            {/* Desktop layout */}
+            <div className="hidden md:block">
+              {/* Day headers */}
+              <div className="grid grid-cols-8 gap-2 mb-2">
+                <div className="text-xs font-medium text-muted-foreground"></div>
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                  <div key={day} className="text-center">
+                    <div className="text-xs font-medium text-muted-foreground">{day}</div>
+                    <div className={`text-sm font-medium ${isToday(getWeekDays()[index]) ? 'text-primary' : 'text-foreground'}`}>
+                      {format(getWeekDays()[index], 'd')}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
-            ))}
+              
+              {/* Routine rows */}
+              {routineSchedules.map((routineSchedule) => (
+                <div key={routineSchedule.assignment_id} className="grid grid-cols-8 gap-2 items-center">
+                  {/* Routine name */}
+                  <div className="text-sm font-medium text-foreground pr-2 truncate">
+                    {routineSchedule.routine_name}
+                  </div>
+                  
+                  {/* Day cells */}
+                  {getWeekDays().map((date, index) => {
+                    const scheduleDay = getScheduleForDay(date, routineSchedule.schedule);
+                    const { bgColor } = getDayStatus(date, scheduleDay);
+                    
+                    return (
+                      <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} className="flex flex-col items-center">
+                        <div className={`w-8 h-4 rounded-sm flex items-center justify-center border-2 ${
+                          isToday(date) ? 'border-primary' : 'border-border'
+                        } ${bgColor} transition-colors`}>
+                        </div>
+                        <div className="text-xs mt-1 text-center truncate max-w-full">
+                          {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day && (
+                            <span className="text-foreground font-medium">
+                              {scheduleDay.routine_day.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">

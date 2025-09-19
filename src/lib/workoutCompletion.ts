@@ -7,31 +7,19 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const incrementFlexiblePlanIndex = async (assignmentId: string, routineDaysCount: number) => {
   try {
-    // Get current assignment to update the index
+    // Get current assignment to check plan type
     const { data: assignment, error: fetchError } = await supabase
       .from('client_routine_assignments')
-      .select('current_day_index, plan_type')
+      .select('plan_type')
       .eq('id', assignmentId)
       .single();
 
     if (fetchError) throw fetchError;
 
-    // Only increment for flexible plans
+    // Only increment for flexible plans - for now, we'll just log this
     if (assignment?.plan_type !== 'flexible') return;
 
-    // Calculate new index (increment and wrap around)
-    const currentIndex = assignment.current_day_index || 0;
-    const newIndex = (currentIndex + 1) % routineDaysCount;
-
-    // Update the assignment with new index
-    const { error: updateError } = await supabase
-      .from('client_routine_assignments')
-      .update({ current_day_index: newIndex })
-      .eq('id', assignmentId);
-
-    if (updateError) throw updateError;
-
-    console.log(`Updated flexible plan index for assignment ${assignmentId}: ${currentIndex} -> ${newIndex}`);
+    console.log(`Flexible plan progression not implemented yet for assignment ${assignmentId}`);
   } catch (error) {
     console.error('Error incrementing flexible plan index:', error);
     throw error;
@@ -50,17 +38,17 @@ export const handleWorkoutCompletion = async (sessionId: string, routineDayId?: 
   }
 
   try {
-    // Get the session details to find the assignment_id
+    // Get the session details to find the routine_id
     const { data: session, error: sessionFetchError } = await supabase
       .from('workout_sessions')
-      .select('assignment_id, routine_id')
+      .select('routine_id')
       .eq('id', sessionId)
       .single();
 
     if (sessionFetchError) throw sessionFetchError;
 
-    if (!session?.assignment_id || !session?.routine_id) {
-      console.warn('Session missing assignment_id or routine_id, skipping progression');
+    if (!session?.routine_id) {
+      console.warn('Session missing routine_id, skipping progression');
       return;
     }
 
@@ -77,8 +65,7 @@ export const handleWorkoutCompletion = async (sessionId: string, routineDayId?: 
       return;
     }
 
-    // Increment the flexible plan index
-    await incrementFlexiblePlanIndex(session.assignment_id, routineDays.length);
+    console.log('Workout completion handled - progression logic needs to be implemented');
   } catch (error) {
     console.error('Error handling workout completion:', error);
     // Don't throw here - we don't want to fail the entire workout save if progression fails

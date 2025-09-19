@@ -48,28 +48,20 @@ const StartWorkout = () => {
         if (activeRoutines && activeRoutines.length > 0) {
           const routine = activeRoutines[0];
           
-          // Get the active assignment for this routine to determine the current day
+          // Get the active assignment for this routine
           const { data: assignment, error: assignmentError } = await supabase
             .from('client_routine_assignments')
-            .select('plan_type, current_day_index')
+            .select('id')
             .eq('client_id', user.id)
             .eq('routine_id', routine.id)
             .eq('is_active', true)
             .single();
 
           if (!assignmentError && assignment) {
-            let routineDay;
-            
-            if (assignment.plan_type === 'flexible') {
-              // Use current_day_index for flexible plans
-              const currentIndex = assignment.current_day_index || 0;
-              routineDay = routine.routine_days[currentIndex % routine.routine_days.length];
-            } else {
-              // For strict plans, use day of week
-              const today = new Date();
-              const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-              routineDay = routine.routine_days[dayOfWeek % routine.routine_days.length];
-            }
+            // For now, use day of week approach for all plans
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const routineDay = routine.routine_days[dayOfWeek % routine.routine_days.length];
             
             if (routineDay) {
               setTodaysRoutine({

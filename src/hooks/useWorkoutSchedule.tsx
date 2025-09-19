@@ -109,7 +109,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       // Fetch completed workout sessions for the week
       const { data: sessions, error: sessionError } = await supabase
         .from('workout_sessions')
-        .select('id, name, start_time, routine_day_id, routine_id, assignment_id')
+        .select('id, name, start_time, routine_day_id, routine_id')
         .eq('user_id', clientId)
         .gte('start_time', format(weekStart, 'yyyy-MM-dd'))
         .lte('start_time', format(weekEnd, 'yyyy-MM-dd 23:59:59'));
@@ -187,17 +187,14 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               shouldHaveWorkout = !!expectedRoutineDay;
             }
           } else {
-            // Flexible plan: Use current_day_index to determine which routine day
-            const currentIndex = assignment.current_day_index || 0;
-            expectedRoutineDay = routineDays[currentIndex % routineDays.length];
-            shouldHaveWorkout = !!expectedRoutineDay;
+            // Flexible plan: For now, treat as rest day since we don't have current_day_index
+            shouldHaveWorkout = false;
           }
 
           // Check if there's a completed workout session for this day and assignment
           const completedSession = sessions.find(s => 
             isSameDay(new Date(s.start_time), currentDate) && 
-            s.routine_day_id && routineDays.some((rd: RoutineDay) => rd.id === s.routine_day_id) &&
-            s.assignment_id && s.assignment_id === assignment.id
+            s.routine_day_id && routineDays.some((rd: RoutineDay) => rd.id === s.routine_day_id)
           );
 
           // Create schedule entry for every day
