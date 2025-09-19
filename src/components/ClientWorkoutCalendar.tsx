@@ -164,62 +164,63 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
                 <div className="mb-2 text-sm font-medium text-muted-foreground">
                   {row.routine_name}
                 </div>
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-1">
                   {getWeekDays().map((date, index) => {
                     const scheduleDay = getScheduleForDayForAssignment(row.assignment_id, date);
-                    const { bgColor } = getDayStatus(date, scheduleDay);
+                    const { bgColor, icon: Icon, label } = getDayStatus(date, scheduleDay);
 
                     return (
                       <div key={date.toISOString()} className="">
-                        <div className={`min-h-[56px] p-1 rounded-lg border-2 ${
+                        <div className={`min-h-[120px] p-2 rounded-lg border-2 ${
                           isToday(date) ? 'border-primary' : 'border-border'
-                        } ${bgColor} transition-colors relative`}>
-                          <div className="flex flex-col items-center justify-center h-full text-center">
-
-                            {scheduleDay && !scheduleDay.is_rest_day && (
-                              <div className="mt-1">
-                                {scheduleDay.workout_session ? (
-                                  <span className="text-xs font-medium">
-                                    {scheduleDay.workout_session.name}
-                                  </span>
-                                ) : scheduleDay.routine_day ? (
-                                  <span className="text-xs font-medium">
-                                    {scheduleDay.routine_day.name}
-                                  </span>
-                                ) : null}
-                              </div>
-                            )}
-
-                            {scheduleDay && (
-                              <div className="absolute bottom-1 right-1">
-                                {canSkipDay(scheduleDay, date) && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => {
-                                      setSelectedSkipDay(scheduleDay);
-                                      setSkipDialogOpen(true);
-                                    }}
-                                  >
-                                    <SkipForward size={12} />
-                                  </Button>
-                                )}
-                                {isToday(date) && !scheduleDay.is_completed && !scheduleDay.is_rest_day && !scheduleDay.was_skipped && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 ml-1"
-                                    onClick={() => {
-                                      window.location.href = '/start-workout';
-                                    }}
-                                  >
-                                    <Play size={12} />
-                                  </Button>
-                                )}
-                              </div>
-                            )}
+                        } ${bgColor} transition-colors relative flex flex-col items-center justify-between`}>
+                          
+                          {/* Icon */}
+                          <Icon size={14} className="text-current mb-1" />
+                          
+                          {/* Vertical Text */}
+                          <div className="flex-1 flex items-center justify-center">
+                            <div className="text-[10px] font-medium text-current transform -rotate-90 whitespace-nowrap">
+                              {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.workout_session ? (
+                                scheduleDay.workout_session.name
+                              ) : scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day ? (
+                                scheduleDay.routine_day.name
+                              ) : (
+                                label
+                              )}
+                            </div>
                           </div>
+
+                          {/* Action buttons at bottom */}
+                          {scheduleDay && (
+                            <div className="absolute bottom-1 right-1 flex gap-1">
+                              {canSkipDay(scheduleDay, date) && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => {
+                                    setSelectedSkipDay(scheduleDay);
+                                    setSkipDialogOpen(true);
+                                  }}
+                                >
+                                  <SkipForward size={10} />
+                                </Button>
+                              )}
+                              {isToday(date) && !scheduleDay.is_completed && !scheduleDay.is_rest_day && !scheduleDay.was_skipped && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-5 w-5 p-0"
+                                  onClick={() => {
+                                    window.location.href = '/start-workout';
+                                  }}
+                                >
+                                  <Play size={10} />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
