@@ -3,13 +3,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, Users, Star, Play, Settings } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Plus, Calendar, Users, Star, Play, Settings, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { PlanTypeDialog } from "@/components/PlanTypeDialog";
+import { EditRoutineDialog } from "@/components/EditRoutineDialog";
+import { DeleteRoutineDialog } from "@/components/DeleteRoutineDialog";
 
 interface WorkoutRoutine {
   id: string;
@@ -36,9 +38,14 @@ const WorkoutRoutines = () => {
   const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
   const [selectedRoutineForActivation, setSelectedRoutineForActivation] = useState<{id: string, name: string} | null>(null);
   const [activeRoutineIds, setActiveRoutineIds] = useState<Set<string>>(new Set());
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedRoutineForEdit, setSelectedRoutineForEdit] = useState<{id: string, name: string} | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedRoutineForDelete, setSelectedRoutineForDelete] = useState<{id: string, name: string, isActive: boolean} | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchRoutines();
@@ -225,6 +232,173 @@ const WorkoutRoutines = () => {
     }
   };
 
+  const handleEditRoutine = (routineId: string, routineName: string) => {
+    setSelectedRoutineForEdit({ id: routineId, name: routineName });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteRoutine = (routineId: string, routineName: string, isActive: boolean) => {
+    setSelectedRoutineForDelete({ id: routineId, name: routineName, isActive });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedRoutineForDelete || !user) return;
+    
+    try {
+      // First, deactivate the routine if it's active
+      if (selectedRoutineForDelete.isActive) {
+        const { error: deactivateError } = await supabase
+          .from('client_routine_assignments')
+          .update({ is_active: false })
+          .eq('client_id', user.id)
+          .eq('routine_id', selectedRoutineForDelete.id);
+
+        if (deactivateError) throw deactivateError;
+      }
+
+      // Delete the routine (this will cascade delete all related days and exercises)
+      const { error: deleteError } = await supabase
+        .from('workout_routines')
+        .delete()
+        .eq('id', selectedRoutineForDelete.id)
+        .eq('user_id', user.id);
+
+      if (deleteError) throw deleteError;
+
+      await fetchRoutines();
+      
+      toast({
+        title: "Routine Deleted",
+        description: `"${selectedRoutineForDelete.name}" has been deleted successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting routine:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete routine. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setSelectedRoutineForDelete(null);
+    }
+  };
+
+  const handleEditRoutineConfirm = () => {
+    if (selectedRoutineForEdit) {
+      navigate(`/routines/${selectedRoutineForEdit.id}/edit`);
+    }
+    setIsEditDialogOpen(false);
+    setSelectedRoutineForEdit(null);
+  };
+
+  const handleCopyAndEdit = async () => {
+    if (!selectedRoutineForEdit || !user) return;
+    
+    try {
+      // Fetch the complete routine data with all days and exercises
+      const { data: routineToCopy, error: fetchError } = await supabase
+        .from('workout_routines')
+        .select(`
+          *,
+          routine_days (
+            id,
+            name,
+            description,
+            routine_exercises (
+              id,
+              exercise_name,
+              sets,
+              weight_suggestion,
+              notes,
+              order_index
+            )
+          )
+        `)
+        .eq('id', selectedRoutineForEdit.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError || !routineToCopy) {
+        toast({
+          title: "Error",
+          description: "Routine not found or you don't have permission to copy it",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create a copy of the routine
+      const { data: newRoutine, error: routineError } = await supabase
+        .from('workout_routines')
+        .insert({
+          user_id: user.id,
+          name: `${routineToCopy.name} (Copy)`,
+          description: routineToCopy.description,
+          days_per_week: routineToCopy.days_per_week,
+          is_public: false
+        })
+        .select()
+        .single();
+
+      if (routineError) throw routineError;
+
+      // Copy all routine days and exercises
+      for (let i = 0; i < routineToCopy.routine_days.length; i++) {
+        const day = routineToCopy.routine_days[i];
+        const { data: newDay, error: dayError } = await supabase
+          .from('routine_days')
+          .insert({
+            routine_id: newRoutine.id,
+            day_number: i + 1,
+            name: day.name,
+            description: day.description
+          })
+          .select()
+          .single();
+
+        if (dayError) throw dayError;
+
+        // Copy exercises for this day
+        for (const exercise of day.routine_exercises) {
+          const { error: exerciseError } = await supabase
+            .from('routine_exercises')
+            .insert({
+              routine_day_id: newDay.id,
+              exercise_name: exercise.exercise_name,
+              sets: exercise.sets,
+              weight_suggestion: exercise.weight_suggestion || '',
+              notes: exercise.notes || '',
+              order_index: exercise.order_index
+            });
+
+          if (exerciseError) throw exerciseError;
+        }
+      }
+
+      await fetchRoutines();
+      
+      toast({
+        title: "Routine Copied!",
+        description: `${routineToCopy.name} has been copied and you can now edit it`
+      });
+
+      // Navigate to edit the copied routine
+      navigate(`/routines/${newRoutine.id}/edit`);
+    } catch (error) {
+      console.error('Error copying routine:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy routine",
+        variant: "destructive"
+      });
+    } finally {
+      setIsEditDialogOpen(false);
+      setSelectedRoutineForEdit(null);
+    }
+  };
+
   const copyPublicRoutine = async (routine: WorkoutRoutine) => {
     if (!user) return;
     
@@ -245,12 +419,13 @@ const WorkoutRoutines = () => {
       if (routineError) throw routineError;
 
       // Copy all routine days and exercises
-      for (const day of routine.routine_days) {
+      for (let i = 0; i < routine.routine_days.length; i++) {
+        const day = routine.routine_days[i];
         const { data: newDay, error: dayError } = await supabase
           .from('routine_days')
           .insert({
             routine_id: newRoutine.id,
-            day_number: routine.routine_days.indexOf(day) + 1,
+            day_number: i + 1,
             name: day.name,
             description: null
           })
@@ -267,7 +442,8 @@ const WorkoutRoutines = () => {
               routine_day_id: newDay.id,
               exercise_name: exercise.exercise_name,
               sets: 3,
-              reps: '8-12',
+              weight_suggestion: '',
+              notes: '',
               order_index: day.routine_exercises.indexOf(exercise)
             });
 
@@ -370,11 +546,23 @@ const WorkoutRoutines = () => {
                     </>
                   )}
                 </Button>
-                <Link to={`/routines/${routine.id}/edit`}>
-                  <Button size="sm" variant="outline" className="w-full">
-                    Edit
-                  </Button>
-                </Link>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleEditRoutine(routine.id, routine.name)}
+                >
+                  Edit
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleDeleteRoutine(routine.id, routine.name, isActive)}
+                >
+                  <Trash2 size={14} className="mr-1" />
+                  Delete
+                </Button>
               </>
             )}
           </div>
@@ -488,6 +676,22 @@ const WorkoutRoutines = () => {
           routineId={selectedRoutineForActivation?.id || ''}
           routineName={selectedRoutineForActivation?.name || ''}
           onConfirm={handleConfirmActivation}
+        />
+
+        <EditRoutineDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          routineName={selectedRoutineForEdit?.name || ''}
+          onEditRoutine={handleEditRoutineConfirm}
+          onCopyAndEdit={handleCopyAndEdit}
+        />
+
+        <DeleteRoutineDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          routineName={selectedRoutineForDelete?.name || ''}
+          isActive={selectedRoutineForDelete?.isActive || false}
+          onConfirm={handleDeleteConfirm}
         />
       </div>
     </Layout>

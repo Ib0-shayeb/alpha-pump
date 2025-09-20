@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Exercises from "./pages/Exercises";
 import Auth from "./pages/Auth";
 import CreateRoutine from "./pages/CreateRoutine";
+import EditRoutine from "./pages/EditRoutine";
 import StartWorkout from "./pages/StartWorkout";
 import CustomWorkout from "./pages/CustomWorkout";
 import ActiveWorkout from "./pages/ActiveWorkout";
@@ -31,6 +32,7 @@ const AppContent = () => {
         <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
         <Route path="/routines" element={<AuthWrapper><WorkoutRoutines /></AuthWrapper>} />
         <Route path="/routines/create" element={<AuthWrapper><CreateRoutine /></AuthWrapper>} />
+        <Route path="/routines/:id/edit" element={<AuthWrapper><EditRoutine /></AuthWrapper>} />
         <Route path="/start-workout" element={<AuthWrapper><StartWorkout /></AuthWrapper>} />
         <Route path="/custom-workout" element={<AuthWrapper><CustomWorkout /></AuthWrapper>} />
         <Route path="/active-workout" element={<AuthWrapper><ActiveWorkout /></AuthWrapper>} />
