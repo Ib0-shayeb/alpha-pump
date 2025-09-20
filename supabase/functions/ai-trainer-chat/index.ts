@@ -31,23 +31,29 @@ serve(async (req) => {
       return new Response('No authorization header', { status: 401, headers: corsHeaders })
     }
 
+    // Create client with service role for database operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    console.log('Verifying user token...')
+    
+    // Create a temporary client with anon key to verify the user's JWT
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: {
-            Authorization: authHeader
-          }
+          headers: { Authorization: authHeader }
         }
       }
     )
 
-    console.log('Getting user from Supabase...')
     const {
       data: { user },
       error: userError
-    } = await supabaseClient.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError) {
       console.error('Error getting user:', userError)
