@@ -33,14 +33,21 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader
+          }
+        }
+      }
     )
 
     console.log('Getting user from Supabase...')
     const {
       data: { user },
       error: userError
-    } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
+    } = await supabaseClient.auth.getUser()
 
     if (userError) {
       console.error('Error getting user:', userError)
