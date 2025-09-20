@@ -22,19 +22,44 @@ serve(async (req) => {
     
     console.log('GEMINI_API_KEY found')
 
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization')
+    console.log('Authorization header present:', !!authHeader)
+    
+    if (!authHeader) {
+      console.error('No authorization header found')
+      return new Response('No authorization header', { status: 401, headers: corsHeaders })
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      { 
+        global: { 
+          headers: { 
+            Authorization: authHeader 
+          } 
+        } 
+      }
     )
 
+    console.log('Getting user from Supabase...')
     const {
       data: { user },
+      error: userError
     } = await supabaseClient.auth.getUser()
 
-    if (!user) {
-      return new Response('Unauthorized', { status: 401, headers: corsHeaders })
+    if (userError) {
+      console.error('Error getting user:', userError)
+      return new Response(`Authentication error: ${userError.message}`, { status: 401, headers: corsHeaders })
     }
+
+    if (!user) {
+      console.error('No user found in token')
+      return new Response('No user found', { status: 401, headers: corsHeaders })
+    }
+
+    console.log('User authenticated:', user.id)
 
     const { message, conversationId } = await req.json()
     console.log('Request body parsed:', { message: message?.slice(0, 50), conversationId })
