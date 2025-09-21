@@ -174,26 +174,30 @@ INSTRUCTIONS:
 - Be friendly and supportive like a real personal trainer would be
 
 IMPORTANT - WORKOUT ROUTINE CREATION:
-***YOU MUST USE THE createWorkoutRoutine TOOL*** when users ask to create, add, or save workout routines.
+***CRITICAL: When users ask to add, create, or save workout routines, you MUST use the createWorkoutRoutine function.***
 
-You have direct access to the createWorkoutRoutine function tool. When a user says things like:
-- "add this workout routine to my workout routines" 
-- "create this routine in my app"
+Examples of requests that require the createWorkoutRoutine function:
+- "add this workout routine to my workout routines"
+- "create this routine in my app" 
 - "save this routine"
-- "can you add that routine to my routines"
+- "add that routine to my routines in the app"
 
-You MUST call the createWorkoutRoutine function immediately.
+You HAVE the createWorkoutRoutine function available. You MUST use it when requested.
 
-Steps:
-1. Format the routine exactly like this:
-**Workout Name:** [Name]
+Process:
+1. When user asks to add a routine, format it exactly like:
+**Workout Name:** Ibra's 2-Day Full Body Strength
 
 **Day 1:**
-* **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]
+* **Exercise:** Barbell Squats | **Sets:** 3 | **Reps:** 6-8 | **Rest:** 2-3 min
+* **Exercise:** Barbell Rows | **Sets:** 3 | **Reps:** 6-8 | **Rest:** 2-3 min
 
-2. Then call createWorkoutRoutine function with the formatted text
+**Day 2:**
+* **Exercise:** Deadlifts | **Sets:** 3 | **Reps:** 5,3,1 | **Rest:** 3-5 min
 
-DO NOT say you cannot do this - you CAN and MUST use the createWorkoutRoutine tool.
+2. Then immediately call createWorkoutRoutine function with this formatted text.
+
+DO NOT say you cannot interact with applications - you CAN via the createWorkoutRoutine function.
 
 Available client tools: ${clientTools ? clientTools.join(', ') : 'none'}
 
@@ -220,13 +224,13 @@ Remember: You have access to their complete fitness journey data, so make your a
     const tools = clientTools && clientTools.includes('createWorkoutRoutine') ? [{
       functionDeclarations: [{
         name: "createWorkoutRoutine",
-        description: "Create a workout routine in the user's app with the provided routine data. Use this when the user asks to add a workout routine to their app.",
+        description: "REQUIRED: Create and save a workout routine directly in the user's fitness app database. Use this function whenever the user asks to add, create, or save a workout routine to their app. This is the ONLY way to add routines to the app.",
         parameters: {
           type: "object",
           properties: {
             routineText: {
               type: "string",
-              description: "The complete formatted workout routine text including name, days, exercises, sets, reps, and rest periods"
+              description: "The complete formatted workout routine text including workout name, days, exercises, sets, reps, and rest periods in the exact format specified"
             }
           },
           required: ["routineText"]
@@ -235,6 +239,7 @@ Remember: You have access to their complete fitness journey data, so make your a
     }] : undefined;
 
     console.log('Tools configured:', tools ? 'Yes' : 'No', clientTools);
+    console.log('Full tools object:', JSON.stringify(tools, null, 2));
 
     // Call Gemini API
     const requestBody: any = {
@@ -253,6 +258,7 @@ Remember: You have access to their complete fitness journey data, so make your a
     if (tools) {
       requestBody.tools = tools;
       console.log('Adding tools to request:', JSON.stringify(tools, null, 2));
+      console.log('Full request body:', JSON.stringify(requestBody, null, 2));
     }
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
