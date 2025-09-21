@@ -65,8 +65,8 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id)
 
-    const { message, conversationId } = await req.json()
-    console.log('Request body parsed:', { message: message?.slice(0, 50), conversationId })
+    const { message, conversationId, clientTools } = await req.json()
+    console.log('Request body parsed:', { message: message?.slice(0, 50), conversationId, clientTools })
 
     if (!message) {
       console.error('No message provided in request')
@@ -170,9 +170,25 @@ INSTRUCTIONS:
 - Consider their fitness level and experience
 - Suggest modifications for exercises when appropriate
 - Help with workout planning, nutrition advice, recovery tips, and form corrections
-- If they ask about creating workout routines, you can recommend specific exercises and rep ranges
 - Keep responses concise but informative
 - Be friendly and supportive like a real personal trainer would be
+
+IMPORTANT - WORKOUT ROUTINE CREATION:
+When a user asks you to create or add a workout routine to their app, you CAN directly create it for them using the createWorkoutRoutine tool. 
+
+To use this tool, format your workout routine in this EXACT format:
+**Workout Name:** [Name of the routine]
+
+**Day 1:**
+* **Exercise:** [Exercise Name] | **Sets:** [Number] | **Reps:** [Rep range] | **Rest:** [Rest time]
+* **Exercise:** [Exercise Name] | **Sets:** [Number] | **Reps:** [Rep range] | **Rest:** [Rest time]
+
+**Day 2:**
+* **Exercise:** [Exercise Name] | **Sets:** [Number] | **Reps:** [Rep range] | **Rest:** [Rest time]
+
+Then call the createWorkoutRoutine tool with the entire formatted routine text as the routineText parameter.
+
+Available client tools: ${clientTools ? clientTools.join(', ') : 'none'}
 
 Remember: You have access to their complete fitness journey data, so make your advice specific and relevant to their situation.`
 
@@ -193,24 +209,48 @@ Remember: You have access to their complete fitness journey data, so make your a
 
     console.log('Sending request to Gemini API...')
 
+    // Prepare tools if available
+    const tools = clientTools && clientTools.includes('createWorkoutRoutine') ? [{
+      function_declarations: [{
+        name: "createWorkoutRoutine",
+        description: "Create a workout routine in the user's app with the provided routine data",
+        parameters: {
+          type: "object",
+          properties: {
+            routineText: {
+              type: "string",
+              description: "The formatted workout routine text that matches the specified format"
+            }
+          },
+          required: ["routineText"]
+        }
+      }]
+    }] : undefined;
+
     // Call Gemini API
+    const requestBody: any = {
+      system_instruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents: messages,
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      }
+    };
+
+    if (tools) {
+      requestBody.tools = tools;
+    }
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: messages,
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        }
-      })
+      body: JSON.stringify(requestBody)
     })
 
     if (!response.ok) {
@@ -223,9 +263,17 @@ Remember: You have access to their complete fitness journey data, so make your a
     console.log('Gemini response:', JSON.stringify(data, null, 2))
 
     const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!aiResponse) {
+    const toolCalls = data.candidates?.[0]?.content?.parts?.filter((part: any) => part.functionCall) || []
+    
+    if (!aiResponse && toolCalls.length === 0) {
       throw new Error('No response from Gemini API')
     }
+
+    // Process tool calls if any
+    const processedToolCalls = toolCalls.map((part: any) => ({
+      name: part.functionCall.name,
+      parameters: part.functionCall.args
+    }));
 
     // Store or update conversation
     let finalConversationId = conversationId
@@ -290,8 +338,9 @@ Remember: You have access to their complete fitness journey data, so make your a
     console.log('Successfully processed chat message')
 
     return new Response(JSON.stringify({
-      response: aiResponse,
-      conversationId: finalConversationId
+      response: aiResponse || 'I\'ve processed your request and used the available tools.',
+      conversationId: finalConversationId,
+      toolCalls: processedToolCalls
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

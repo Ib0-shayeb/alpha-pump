@@ -8,6 +8,7 @@ import { Loader2, Send, Bot, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { parseWorkoutRoutineFromAI, createWorkoutRoutineInDatabase } from "@/lib/aiRoutineParser";
 
 interface Message {
   id: string;
@@ -87,6 +88,37 @@ export default function AITrainerChat() {
     setCurrentConversationId(null);
   };
 
+  // Client tools for AI to interact with the app
+  const clientTools = {
+    createWorkoutRoutine: async (parameters: { routineText: string }) => {
+      try {
+        if (!user) {
+          toast.error('You must be logged in to create routines');
+          return "Error: User not authenticated";
+        }
+
+        const parsedRoutine = parseWorkoutRoutineFromAI(parameters.routineText);
+        if (!parsedRoutine) {
+          toast.error('Failed to parse workout routine');
+          return "Error: Could not parse the workout routine format";
+        }
+
+        const routineId = await createWorkoutRoutineInDatabase(parsedRoutine, user.id);
+        if (!routineId) {
+          toast.error('Failed to create workout routine');
+          return "Error: Could not save the workout routine to database";
+        }
+
+        toast.success(`Created workout routine: ${parsedRoutine.name}`);
+        return `Successfully created workout routine "${parsedRoutine.name}" with ${parsedRoutine.days.length} days and saved it to your routines. You can find it in your Workout Routines section.`;
+      } catch (error) {
+        console.error('Error creating workout routine:', error);
+        toast.error('Failed to create workout routine');
+        return "Error: Failed to create the workout routine. Please try again.";
+      }
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -107,13 +139,24 @@ export default function AITrainerChat() {
       const { data, error } = await supabase.functions.invoke('ai-trainer-chat', {
         body: {
           message: userMessage,
-          conversationId: currentConversationId
+          conversationId: currentConversationId,
+          clientTools: Object.keys(clientTools)
         }
       });
 
       if (error) throw error;
 
-      const { response, conversationId: newConversationId } = data;
+      const { response, conversationId: newConversationId, toolCalls } = data;
+
+      // Handle any tool calls from the AI
+      if (toolCalls && toolCalls.length > 0) {
+        for (const toolCall of toolCalls) {
+          if (toolCall.name === 'createWorkoutRoutine' && clientTools.createWorkoutRoutine) {
+            const result = await clientTools.createWorkoutRoutine(toolCall.parameters);
+            console.log('Tool call result:', result);
+          }
+        }
+      }
 
       // Update conversation ID if this was a new conversation
       if (!currentConversationId && newConversationId) {
