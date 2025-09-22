@@ -163,9 +163,11 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       
       // Generate schedule for each day of the week for this specific routine
       let currentDate = weekStart;
+      currentDate.setHours(0, 0, 0, 0); // Normalize to start of day
       while (currentDate <= weekEnd) {
         const dateStr = format(currentDate, 'yyyy-MM-dd');
         const assignmentStart = new Date(assignment.start_date);
+        assignmentStart.setHours(0, 0, 0, 0); // Normalize to start of day
         
         // Only generate schedule for dates after assignment start
         if (currentDate >= assignmentStart) {
@@ -177,6 +179,10 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
           let shouldHaveWorkout = false;
           let expectedRoutineDay: RoutineDay | undefined;
 
+          // Get today's date for both plan types (normalized to start of day)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
           if (assignment.plan_type === 'strict') {
             // Strict plan: Based on days of week
             const dayOfWeek = currentDate.getDay(); // 0=Sunday, 1=Monday, etc.
@@ -188,57 +194,47 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
             }
           } else {
             // Flexible plan: For now, treat as rest day since we don't have current_day_index
+            const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            expectedRoutineDay = routineDays[assignment.current_day_index + daysAfterToday % routineDays.length];
             shouldHaveWorkout = false;
           }
 
           // Check if there's a completed workout session for this day and assignment
           const completedSession = sessions.find(s => 
             isSameDay(new Date(s.start_time), currentDate) && 
+            s.routine_id === assignment.routine_id &&
             s.routine_day_id && routineDays.some((rd: RoutineDay) => rd.id === s.routine_day_id)
           );
 
-          // Create schedule entry for every day
-          if (shouldHaveWorkout && expectedRoutineDay && completedSession) {
-            // Workout day - completed
-            daySchedule = {
-              id: `${assignment.id}-${dateStr}`,
-              assignment_id: assignment.id,
-              scheduled_date: dateStr,
-              is_rest_day: false,
-              is_completed: true,
-              was_skipped: false,
-              routine_day: {
-                name: expectedRoutineDay.name,
-                description: expectedRoutineDay.description
-              },
-              workout_session: {
-                name: completedSession.name
-              },
-              assignment: { plan_type: assignment.plan_type }
-            };
-          } else {
-            // Not completed - determine if rest day or skipped based on plan type
-            if (assignment.plan_type === 'flexible') {
-              // Flexible plan - treat as rest day
+          if(currentDate >= today){
+            if(assignment.plan_type === 'flexible'){
+              const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              const expectedRoutineDayIndex = assignment.current_day_index + daysAfterToday % routineDays.length;
+              expectedRoutineDay = routineDays[expectedRoutineDayIndex];
+
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
                 scheduled_date: dateStr,
-                is_rest_day: true,
-                is_completed: false,
+                is_rest_day: false,
+                is_completed: currentDate === today ? true : false,
                 was_skipped: false,
+                routine_day: {
+                  name: expectedRoutineDay.name,
+                  description: expectedRoutineDay.description
+                },
                 assignment: { plan_type: assignment.plan_type }
               };
-            } else {
-              // Strict plan - if should have workout but didn't complete, it's skipped
-              if (shouldHaveWorkout && expectedRoutineDay) {
+            } else {//strict plan
+              if(shouldHaveWorkout){
                 daySchedule = {
                   id: `${assignment.id}-${dateStr}`,
                   assignment_id: assignment.id,
                   scheduled_date: dateStr,
                   is_rest_day: false,
-                  is_completed: false,
-                  was_skipped: true,
+                  is_completed: currentDate === today ? true : false,
+                  was_skipped: false,
                   routine_day: {
                     name: expectedRoutineDay.name,
                     description: expectedRoutineDay.description
@@ -246,7 +242,6 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                   assignment: { plan_type: assignment.plan_type }
                 };
               } else {
-                // No workout scheduled for this day
                 daySchedule = {
                   id: `${assignment.id}-${dateStr}`,
                   assignment_id: assignment.id,
@@ -258,7 +253,37 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 };
               }
             }
+          } else if (currentDate < today){//currentDate is before today
+            if(assignment.plan_type === 'flexible'){
+
+              daySchedule = {
+                id: `${assignment.id}-${dateStr}`,
+                assignment_id: assignment.id,
+                scheduled_date: dateStr,
+                is_rest_day: completedSession ? false : true,
+                is_completed: completedSession ? true : false,
+                was_skipped: false,
+                routine_day: completedSession ? {
+                  name: completedSession.name
+                } : undefined,
+                assignment: { plan_type: assignment.plan_type }
+              };
+            } else {//strict plan
+              daySchedule = {
+                id: `${assignment.id}-${dateStr}`,
+                assignment_id: assignment.id,
+                scheduled_date: dateStr,
+                is_rest_day: !shouldHaveWorkout,
+                is_completed: shouldHaveWorkout && completedSession ? true : false,
+                was_skipped: shouldHaveWorkout && !completedSession,
+                routine_day: shouldHaveWorkout && completedSession ? {
+                  name: completedSession.name
+                } : undefined,
+                assignment: { plan_type: assignment.plan_type }
+              };
+            }
           }
+
 
           routineSchedule.push(daySchedule);
         }
