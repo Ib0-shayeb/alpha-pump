@@ -176,7 +176,13 @@ INSTRUCTIONS:
 🚨 CRITICAL: WORKOUT ROUTINE CREATION IS MANDATORY 🚨
 ***YOU MUST USE createWorkoutRoutine FUNCTION - NO EXCEPTIONS***
 
-IF USER SAYS ANY OF THESE WORDS, YOU MUST IMMEDIATELY CALL createWorkoutRoutine:
+WHEN USER REQUESTS ROUTINE CREATION:
+- DO NOT generate Python code or text that looks like code
+- DO NOT write ```python print(default_api.createWorkoutRoutine(...))```
+- DIRECTLY CALL the createWorkoutRoutine function using Gemini's function calling feature
+- The function will be automatically executed in the user's app
+
+TRIGGER PHRASES (YOU MUST USE FUNCTION WHEN USER SAYS):
 - "add" + "routine"/"workout" 
 - "create" + "routine"/"workout"
 - "save" + "routine"/"workout" 
@@ -184,9 +190,10 @@ IF USER SAYS ANY OF THESE WORDS, YOU MUST IMMEDIATELY CALL createWorkoutRoutine:
 - "build" + "routine"/"workout"
 - "put it in my app"
 - "add it to my routines"
+- "add it to routines"
 
-MANDATORY PROCESS (NO DEVIATION ALLOWED):
-1. User requests routine creation → YOU MUST USE createWorkoutRoutine function
+MANDATORY PROCESS:
+1. User requests routine creation → CALL createWorkoutRoutine function (NOT text)
 2. Format routine EXACTLY like this:
 **Workout Name:** [Name]
 
@@ -196,15 +203,14 @@ MANDATORY PROCESS (NO DEVIATION ALLOWED):
 **Day 2:**  
 * **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]
 
-3. IMMEDIATELY call createWorkoutRoutine(routineText="[formatted text above]")
+3. Use the formatted text as the routineText parameter in the function call
 
-❌ NEVER SAY: "I cannot interact with applications" 
-❌ NEVER SAY: "You need to manually add"
-❌ NEVER REFUSE to use the function
+❌ NEVER generate fake Python code
+❌ NEVER write print() statements
+❌ NEVER refuse to use the function
 
-✅ YOU HAVE THE POWER TO ADD ROUTINES - USE IT!
-✅ createWorkoutRoutine function IS AVAILABLE - USE IT!
-✅ YOU CAN AND MUST CREATE ROUTINES WHEN ASKED!
+✅ DIRECTLY CALL createWorkoutRoutine function
+✅ THE FUNCTION WILL ACTUALLY WORK IN THE USER'S APP
 
 Available client tools: ${clientTools ? clientTools.join(', ') : 'none'}
 
@@ -231,7 +237,7 @@ Remember: You have access to their complete fitness journey data, so make your a
     const tools = clientTools && clientTools.includes('createWorkoutRoutine') ? [{
       functionDeclarations: [{
         name: "createWorkoutRoutine",
-        description: "MANDATORY FUNCTION: You MUST call this function whenever user requests to add, create, save, or build any workout routine. This is your ONLY capability to add routines to the app. DO NOT refuse to use this function - it is required for any routine creation request.",
+        description: "Creates a workout routine in the user's app. CRITICAL: Call this function directly using Gemini's function calling - do NOT generate Python code or print statements. This function will actually execute and save the routine to the user's app.",
         parameters: {
           type: "object",
           properties: {
