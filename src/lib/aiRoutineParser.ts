@@ -23,51 +23,70 @@ export interface AIExercise {
 
 export const parseWorkoutRoutineFromAI = (routineText: string): AIWorkoutRoutine | null => {
   try {
+    console.log('Parsing routine text:', routineText);
+    
     // Parse the routine name
     const nameMatch = routineText.match(/\*\*Workout Name:\*\*\s*(.+)/i);
     const name = nameMatch ? nameMatch[1].trim() : "AI Generated Routine";
+    console.log('Parsed name:', name);
 
-    // Find all day sections
-    const dayMatches = routineText.match(/\*\*Day \d+:\*\*[\s\S]*?(?=\*\*Day \d+:\*\*|\*\*Home Day:\*\*|$)/gi);
+    // Find all day sections - made more flexible
+    const dayMatches = routineText.match(/\*\*Day \d+[:\s]*.*?\*\*[\s\S]*?(?=\*\*Day \d+|\*\*Home Day|$)/gi);
+    console.log('Day matches found:', dayMatches?.length || 0, dayMatches);
     
     const days: AIWorkoutDay[] = [];
     
     if (dayMatches) {
       dayMatches.forEach((daySection, index) => {
+        console.log(`Processing day section ${index + 1}:`, daySection);
         const exercises: AIExercise[] = [];
         
-        // Find all exercises in this day
+        // Find all exercises in this day - made more flexible
         const exerciseMatches = daySection.match(/\*\s*\*\*Exercise:\*\*\s*([^|]+)\s*\|\s*\*\*Sets:\*\*\s*(\d+)\s*\|\s*\*\*Reps:\*\*\s*([^|]+)\s*\|\s*\*\*Rest:\*\*\s*([^*\n]+)/gi);
+        console.log(`Exercise matches for day ${index + 1}:`, exerciseMatches?.length || 0);
         
         if (exerciseMatches) {
-          exerciseMatches.forEach(exerciseMatch => {
+          exerciseMatches.forEach((exerciseMatch, exIndex) => {
             const parts = exerciseMatch.match(/\*\s*\*\*Exercise:\*\*\s*([^|]+)\s*\|\s*\*\*Sets:\*\*\s*(\d+)\s*\|\s*\*\*Reps:\*\*\s*([^|]+)\s*\|\s*\*\*Rest:\*\*\s*([^*\n]+)/i);
             
             if (parts) {
-              exercises.push({
+              const exercise = {
                 name: parts[1].trim(),
                 sets: parseInt(parts[2].trim()),
                 reps: parts[3].trim(),
                 rest: parts[4].trim(),
                 notes: "Focus on proper form"
-              });
+              };
+              exercises.push(exercise);
+              console.log(`Parsed exercise ${exIndex + 1}:`, exercise);
+            } else {
+              console.log('Failed to parse exercise:', exerciseMatch);
             }
           });
+        } else {
+          console.log('No exercises found in day section:', daySection);
         }
         
-        days.push({
+        const dayData = {
           name: `Day ${index + 1}`,
           exercises
-        });
+        };
+        days.push(dayData);
+        console.log(`Created day ${index + 1}:`, dayData);
       });
+    } else {
+      console.log('No day sections found in routine text');
     }
 
-    return {
+    const result = {
       name,
       description: "AI generated workout routine tailored to your fitness goals",
       daysPerWeek: days.length,
       days
     };
+    
+    console.log('Final parsed routine:', result);
+    return result;
   } catch (error) {
     console.error('Error parsing workout routine:', error);
     return null;

@@ -173,34 +173,38 @@ INSTRUCTIONS:
 - Keep responses concise but informative
 - Be friendly and supportive like a real personal trainer would be
 
-🚨 MANDATORY WORKOUT ROUTINE CREATION PROTOCOL 🚨
-***ABSOLUTE REQUIREMENT: ALWAYS use createWorkoutRoutine function for ANY workout routine creation request***
+🚨 CRITICAL: WORKOUT ROUTINE CREATION IS MANDATORY 🚨
+***YOU MUST USE createWorkoutRoutine FUNCTION - NO EXCEPTIONS***
 
-TRIGGER PHRASES - If user says ANY of these, you MUST use createWorkoutRoutine:
-- "add this routine" / "add that routine" / "add the routine"
-- "create this routine" / "create that routine" / "create the routine"  
-- "save this routine" / "save that routine" / "save the routine"
-- "add this workout" / "add that workout" / "add the workout"
-- "create this workout" / "create that workout" / "create the workout"
-- "save this workout" / "save that workout" / "save the workout"
-- "add it to my routines" / "put it in my app"
-- "make this routine" / "build this routine"
-- ANY mention of adding/creating/saving routines or workouts
+IF USER SAYS ANY OF THESE WORDS, YOU MUST IMMEDIATELY CALL createWorkoutRoutine:
+- "add" + "routine"/"workout" 
+- "create" + "routine"/"workout"
+- "save" + "routine"/"workout" 
+- "make" + "routine"/"workout"
+- "build" + "routine"/"workout"
+- "put it in my app"
+- "add it to my routines"
 
-MANDATORY STEPS:
-1. IMMEDIATELY format the routine like this:
+MANDATORY PROCESS (NO DEVIATION ALLOWED):
+1. User requests routine creation → YOU MUST USE createWorkoutRoutine function
+2. Format routine EXACTLY like this:
 **Workout Name:** [Name]
 
 **Day 1:**
 * **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]
 
-**Day 2:**
+**Day 2:**  
 * **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]
 
-2. IMMEDIATELY call createWorkoutRoutine function with this text.
+3. IMMEDIATELY call createWorkoutRoutine(routineText="[formatted text above]")
 
-NEVER say "I cannot interact with applications" - you CAN and MUST use createWorkoutRoutine function.
-NEVER suggest manual entry - you have the power to add routines directly.
+❌ NEVER SAY: "I cannot interact with applications" 
+❌ NEVER SAY: "You need to manually add"
+❌ NEVER REFUSE to use the function
+
+✅ YOU HAVE THE POWER TO ADD ROUTINES - USE IT!
+✅ createWorkoutRoutine function IS AVAILABLE - USE IT!
+✅ YOU CAN AND MUST CREATE ROUTINES WHEN ASKED!
 
 Available client tools: ${clientTools ? clientTools.join(', ') : 'none'}
 
@@ -227,13 +231,13 @@ Remember: You have access to their complete fitness journey data, so make your a
     const tools = clientTools && clientTools.includes('createWorkoutRoutine') ? [{
       functionDeclarations: [{
         name: "createWorkoutRoutine",
-        description: "REQUIRED: Create and save a workout routine directly in the user's fitness app database. Use this function whenever the user asks to add, create, or save a workout routine to their app. This is the ONLY way to add routines to the app.",
+        description: "MANDATORY FUNCTION: You MUST call this function whenever user requests to add, create, save, or build any workout routine. This is your ONLY capability to add routines to the app. DO NOT refuse to use this function - it is required for any routine creation request.",
         parameters: {
           type: "object",
           properties: {
             routineText: {
               type: "string",
-              description: "The complete formatted workout routine text including workout name, days, exercises, sets, reps, and rest periods in the exact format specified"
+              description: "Complete workout routine formatted EXACTLY as: **Workout Name:** [Name]\n\n**Day 1:**\n* **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]\n\n**Day 2:**\n* **Exercise:** [Name] | **Sets:** [Number] | **Reps:** [Range] | **Rest:** [Time]"
             }
           },
           required: ["routineText"]
