@@ -30,53 +30,83 @@ export const parseWorkoutRoutineFromAI = (routineText: string): AIWorkoutRoutine
     const name = nameMatch ? nameMatch[1].trim() : "AI Generated Routine";
     console.log('Parsed name:', name);
 
-    // Find all day sections - made more flexible
-    const dayMatches = routineText.match(/\*\*Day \d+[:\s]*.*?\*\*[\s\S]*?(?=\*\*Day \d+|\*\*Home Day|$)/gi);
-    console.log('Day matches found:', dayMatches?.length || 0, dayMatches);
+    // Split by day headers and filter out empty sections
+    const sections = routineText.split(/(?=\*\*Day \d+)/i).filter(section => section.trim());
+    console.log('Split sections:', sections);
     
     const days: AIWorkoutDay[] = [];
     
-    if (dayMatches) {
-      dayMatches.forEach((daySection, index) => {
-        console.log(`Processing day section ${index + 1}:`, daySection);
-        const exercises: AIExercise[] = [];
+    sections.forEach((section, index) => {
+      // Skip the first section if it's just the workout name
+      if (!section.includes('**Day ')) return;
+      
+      console.log(`Processing section ${index}:`, section);
+      
+      // Extract day name
+      const dayHeaderMatch = section.match(/\*\*Day (\d+)[^*]*\*\*/i);
+      const dayNumber = dayHeaderMatch ? parseInt(dayHeaderMatch[1]) : index + 1;
+      const dayName = `Day ${dayNumber}`;
+      
+      const exercises: AIExercise[] = [];
+      
+      // Find all exercises with the proper format
+      const exerciseMatches = section.match(/\*\s*\*\*Exercise:\*\*[^*]+?\*\*Rest:\*\*[^*\n]+/gi);
+      console.log(`Exercise matches for ${dayName}:`, exerciseMatches?.length || 0);
+      
+      if (exerciseMatches) {
+        exerciseMatches.forEach((exerciseMatch, exIndex) => {
+          // More flexible parsing
+          const nameMatch = exerciseMatch.match(/\*\*Exercise:\*\*\s*([^|]+)/i);
+          const setsMatch = exerciseMatch.match(/\*\*Sets:\*\*\s*(\d+)/i);
+          const repsMatch = exerciseMatch.match(/\*\*Reps:\*\*\s*([^|]+)/i);
+          const restMatch = exerciseMatch.match(/\*\*Rest:\*\*\s*([^*\n]+)/i);
+          
+          if (nameMatch && setsMatch && repsMatch && restMatch) {
+            const exercise = {
+              name: nameMatch[1].trim(),
+              sets: parseInt(setsMatch[1].trim()),
+              reps: repsMatch[1].trim(),
+              rest: restMatch[1].trim(),
+              notes: "Focus on proper form"
+            };
+            exercises.push(exercise);
+            console.log(`Parsed exercise ${exIndex + 1}:`, exercise);
+          } else {
+            console.log('Failed to parse exercise:', exerciseMatch);
+            console.log('Matches:', { nameMatch, setsMatch, repsMatch, restMatch });
+          }
+        });
+      } else {
+        console.log('No properly formatted exercises found in section:', section);
         
-        // Find all exercises in this day - made more flexible
-        const exerciseMatches = daySection.match(/\*\s*\*\*Exercise:\*\*\s*([^|]+)\s*\|\s*\*\*Sets:\*\*\s*(\d+)\s*\|\s*\*\*Reps:\*\*\s*([^|]+)\s*\|\s*\*\*Rest:\*\*\s*([^*\n]+)/gi);
-        console.log(`Exercise matches for day ${index + 1}:`, exerciseMatches?.length || 0);
-        
-        if (exerciseMatches) {
-          exerciseMatches.forEach((exerciseMatch, exIndex) => {
-            const parts = exerciseMatch.match(/\*\s*\*\*Exercise:\*\*\s*([^|]+)\s*\|\s*\*\*Sets:\*\*\s*(\d+)\s*\|\s*\*\*Reps:\*\*\s*([^|]+)\s*\|\s*\*\*Rest:\*\*\s*([^*\n]+)/i);
-            
-            if (parts) {
-              const exercise = {
-                name: parts[1].trim(),
-                sets: parseInt(parts[2].trim()),
-                reps: parts[3].trim(),
-                rest: parts[4].trim(),
-                notes: "Focus on proper form"
-              };
-              exercises.push(exercise);
-              console.log(`Parsed exercise ${exIndex + 1}:`, exercise);
-            } else {
-              console.log('Failed to parse exercise:', exerciseMatch);
+        // Try to find exercises without the full format (like cardio)
+        const simpleExercises = section.match(/\*\s*\*\*Exercise:\*\*[^*\n]+/gi);
+        if (simpleExercises) {
+          console.log('Found simple exercises:', simpleExercises);
+          simpleExercises.forEach(ex => {
+            const nameMatch = ex.match(/\*\*Exercise:\*\*\s*(.+)/i);
+            if (nameMatch) {
+              exercises.push({
+                name: nameMatch[1].trim(),
+                sets: 1,
+                reps: "As prescribed",
+                rest: "As needed",
+                notes: "Follow exercise description"
+              });
             }
           });
-        } else {
-          console.log('No exercises found in day section:', daySection);
         }
-        
+      }
+      
+      if (exercises.length > 0) {
         const dayData = {
-          name: `Day ${index + 1}`,
+          name: dayName,
           exercises
         };
         days.push(dayData);
-        console.log(`Created day ${index + 1}:`, dayData);
-      });
-    } else {
-      console.log('No day sections found in routine text');
-    }
+        console.log(`Created ${dayName}:`, dayData);
+      }
+    });
 
     const result = {
       name,
