@@ -210,7 +210,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
             s.routine_day_id && routineDays.some((rd: RoutineDay) => rd.id === s.routine_day_id)
           );
 
-          if(currentDate >= today){
+          if(currentDate > today){
             if(assignment.plan_type === 'flexible'){
               const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
               const expectedRoutineDayIndex = assignment.current_day_index + daysAfterToday % routineDays.length;
@@ -222,7 +222,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 routine_id: assignment.routine_id,
                 scheduled_date: dateStr,
                 is_rest_day: false,
-                is_completed: currentDate === today ? true : false,
+                is_completed: false,
                 was_skipped: false,
                 routine_day: {
                   id: expectedRoutineDay.id,
@@ -239,7 +239,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                   routine_id: assignment.routine_id,
                   scheduled_date: dateStr,
                   is_rest_day: false,
-                  is_completed: currentDate === today ? true : false,
+                  is_completed: false,
                   was_skipped: false,
                   routine_day: {
                     id: expectedRoutineDay.id,
@@ -299,6 +299,68 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                   id: completedSession.id,
                   name: completedSession.name
                 } : undefined,
+                assignment: { plan_type: assignment.plan_type }
+              };
+            }
+          } else {
+            if(shouldHaveWorkout && !completedSession){
+              if(assignment.plan_type === 'flexible'){
+                const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const expectedRoutineDayIndex = assignment.current_day_index + daysAfterToday % routineDays.length;
+                expectedRoutineDay = routineDays[expectedRoutineDayIndex];
+
+                daySchedule = {
+                  id: `${assignment.id}-${dateStr}`,
+                  assignment_id: assignment.id,
+                  routine_id: assignment.routine_id,
+                  scheduled_date: dateStr,
+                  is_rest_day: false,
+                  is_completed: false,
+                  was_skipped: false,
+                  routine_day: {
+                    id: expectedRoutineDay.id,
+                    name: expectedRoutineDay.name,
+                    description: expectedRoutineDay.description
+                  },
+                  assignment: { plan_type: assignment.plan_type }
+                };
+              } else {//strict plan
+                daySchedule = {
+                  id: `${assignment.id}-${dateStr}`,
+                  assignment_id: assignment.id,
+                  routine_id: assignment.routine_id,
+                  scheduled_date: dateStr,
+                  is_rest_day: false,
+                  is_completed: false,
+                  was_skipped: false,
+                  routine_day: {
+                    id: expectedRoutineDay.id,
+                    name: expectedRoutineDay.name,
+                    description: expectedRoutineDay.description
+                  },
+                  assignment: { plan_type: assignment.plan_type }
+                };
+              }
+            } else if(completedSession){
+              daySchedule = {
+                id: `${assignment.id}-${dateStr}`,
+                assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
+                scheduled_date: dateStr,
+                is_rest_day: false,
+                is_completed: true,
+                was_skipped: false,
+                assignment: { plan_type: assignment.plan_type }
+              };
+            } else {
+              daySchedule = {
+                id: `${assignment.id}-${dateStr}`,
+                assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
+                scheduled_date: dateStr,
+                is_rest_day: true,
+                is_completed: false,
+                was_skipped: false,
                 assignment: { plan_type: assignment.plan_type }
               };
             }
