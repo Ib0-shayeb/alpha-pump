@@ -6,6 +6,130 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface ParsedRoutine {
+  name: string;
+  description?: string;
+  days: Array<{
+    name: string;
+    description?: string;
+    exercises: Array<{
+      name: string;
+      sets: number;
+      reps: string;
+      weight?: string;
+      restSeconds?: number;
+      notes?: string;
+    }>;
+  }>;
+}
+
+// Function to parse AI-generated routine text
+function parseAIRoutine(routineText: string): ParsedRoutine {
+  console.log('Parsing routine text:', routineText);
+  
+  const lines = routineText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  let routineName = 'AI Generated Workout';
+  const days: Array<{
+    name: string;
+    description?: string;
+    exercises: Array<{
+      name: string;
+      sets: number;
+      reps: string;
+      weight?: string;
+      restSeconds?: number;
+      notes?: string;
+    }>;
+  }> = [];
+  
+  let currentDay: any = null;
+  
+  for (const line of lines) {
+    // Extract workout name
+    if (line.startsWith('**Workout Name:**')) {
+      routineName = line.replace('**Workout Name:**', '').trim();
+      continue;
+    }
+    
+    // Check for day headers
+    const dayMatch = line.match(/^\*\*Day (\d+):?\s*(.+)?\*\*/);
+    if (dayMatch) {
+      if (currentDay) {
+        days.push(currentDay);
+      }
+      
+      const dayNumber = parseInt(dayMatch[1]);
+      const dayName = dayMatch[2] ? dayMatch[2].trim() : `Day ${dayNumber}`;
+      
+      currentDay = {
+        name: dayName,
+        description: '',
+        exercises: []
+      };
+      continue;
+    }
+    
+    // Parse exercises
+    if (line.startsWith('* **Exercise:**') && currentDay) {
+      // Extract exercise details using regex
+      const exerciseMatch = line.match(/\* \*\*Exercise:\*\* (.+?) \| \*\*Sets:\*\* (\d+) \| \*\*Reps:\*\* ([^|]+?)(?:\s*\|\s*\*\*Rest:\*\* (.+?))?$/);
+      
+      if (exerciseMatch) {
+        const [, exerciseName, sets, reps, rest] = exerciseMatch;
+        
+        // Parse rest time
+        let restSeconds = 60;
+        if (rest) {
+          const restMatch = rest.match(/(\d+)(?:-(\d+))?\s*(seconds?|minutes?)/i);
+          if (restMatch) {
+            const [, min, max, unit] = restMatch;
+            let time = parseInt(min);
+            if (max) {
+              time = Math.floor((parseInt(min) + parseInt(max)) / 2);
+            }
+            if (unit.toLowerCase().startsWith('minute')) {
+              time *= 60;
+            }
+            restSeconds = time;
+          }
+        }
+        
+        currentDay.exercises.push({
+          name: exerciseName.trim(),
+          sets: parseInt(sets),
+          reps: reps.trim(),
+          restSeconds
+        });
+      } else {
+        // Fallback for simpler exercise formats
+        const simpleName = line.replace(/^\* \*\*Exercise:\*\*/, '').trim();
+        if (simpleName) {
+          currentDay.exercises.push({
+            name: simpleName,
+            sets: 3,
+            reps: '8-12',
+            restSeconds: 60
+          });
+        }
+      }
+    }
+  }
+  
+  // Add the last day if it exists
+  if (currentDay) {
+    days.push(currentDay);
+  }
+  
+  console.log('Parsed routine:', { routineName, daysCount: days.length });
+  
+  return {
+    name: routineName,
+    description: 'AI generated workout routine',
+    days
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -294,14 +418,99 @@ Remember: You have access to their complete fitness journey data, so make your a
     const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
     const toolCalls = data.candidates?.[0]?.content?.parts?.filter((part: any) => part.functionCall) || []
     
-    if (!aiResponse && toolCalls.length === 0) {
+    let finalResponse = aiResponse || '';
+    
+    // Process tool calls if any
+    if (toolCalls.length > 0) {
+      console.log('Processing tool calls:', toolCalls.length);
+      
+      for (const toolCall of toolCalls) {
+        const functionCall = toolCall.functionCall;
+        console.log('Function call detected:', functionCall.name, functionCall.args);
+        
+        if (functionCall.name === 'createWorkoutRoutine') {
+          const routineText = functionCall.args?.routineText;
+          
+          if (routineText) {
+            try {
+              // Parse and create the workout routine
+              const routineData = parseAIRoutine(routineText);
+              console.log('Parsed routine data:', routineData);
+              
+              // Create the workout routine in the database
+              const { data: routine, error: routineError } = await supabaseClient
+                .from('workout_routines')
+                .insert({
+                  name: routineData.name,
+                  description: routineData.description || 'AI generated workout routine',
+                  days_per_week: routineData.days.length,
+                  user_id: user.id,
+                  created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+              if (routineError) {
+                console.error('Error creating routine:', routineError);
+                finalResponse = "I apologize, there was an error creating your workout routine. Please try again.";
+              } else {
+                // Create routine days and exercises
+                for (const [dayIndex, day] of routineData.days.entries()) {
+                  const { data: routineDay, error: dayError } = await supabaseClient
+                    .from('routine_days')
+                    .insert({
+                      routine_id: routine.id,
+                      name: day.name,
+                      description: day.description || '',
+                      day_number: dayIndex + 1
+                    })
+                    .select()
+                    .single();
+
+                  if (dayError) {
+                    console.error('Error creating routine day:', dayError);
+                    continue;
+                  }
+
+                  // Create exercises for this day
+                  for (const [exerciseIndex, exercise] of day.exercises.entries()) {
+                    await supabaseClient
+                      .from('routine_exercises')
+                      .insert({
+                        routine_day_id: routineDay.id,
+                        exercise_name: exercise.name,
+                        sets: exercise.sets,
+                        reps: exercise.reps,
+                        weight_suggestion: exercise.weight || null,
+                        rest_time_seconds: exercise.restSeconds || 60,
+                        notes: exercise.notes || null,
+                        order_index: exerciseIndex
+                      });
+                  }
+                }
+
+                finalResponse = `Perfect! I've successfully created your "${routineData.name}" workout routine with ${routineData.days.length} days. You can find it in your workout routines and start using it right away!`;
+                console.log('Routine created successfully:', routine.id);
+              }
+            } catch (parseError) {
+              console.error('Error parsing routine:', parseError);
+              finalResponse = "I had trouble parsing the workout routine format. Let me try creating it again with the proper format.";
+            }
+          } else {
+            finalResponse = "I need the workout routine text to create your routine. Please try again.";
+          }
+        }
+      }
+    }
+    
+    if (!finalResponse && toolCalls.length === 0) {
       throw new Error('No response from Gemini API')
     }
 
-    // Process tool calls if any
+    // Process tool calls for response
     const processedToolCalls = toolCalls.map((part: any) => ({
-      name: part.functionCall.name,
-      parameters: part.functionCall.args
+      name: part.functionCall?.name || 'unknown',
+      parameters: part.functionCall?.args || {}
     }));
 
     // Store or update conversation
@@ -346,7 +555,7 @@ Remember: You have access to their complete fitness journey data, so make your a
       .insert({
         conversation_id: finalConversationId,
         role: 'assistant',
-        content: aiResponse
+        content: finalResponse || 'I processed your request.'
       })
 
     if (aiMsgError) {
@@ -367,7 +576,7 @@ Remember: You have access to their complete fitness journey data, so make your a
     console.log('Successfully processed chat message')
 
     return new Response(JSON.stringify({
-      response: aiResponse || 'I\'ve processed your request and used the available tools.',
+      response: finalResponse || 'I\'ve processed your request and used the available tools.',
       conversationId: finalConversationId,
       toolCalls: processedToolCalls
     }), {
