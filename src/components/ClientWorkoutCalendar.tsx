@@ -112,8 +112,8 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
       // Navigate to completed workout session details
       navigate(`/workout-session/${scheduleDay.workout_session.id}`);
     } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
-      // Navigate to scheduled routine details
-      navigate(`/routine/${scheduleDay.assignment_id}/day/${scheduleDay.routine_day.id}`);
+      // Navigate to scheduled routine details using routine_id instead of assignment_id
+      navigate(`/routine/${scheduleDay.routine_id}/day/${scheduleDay.routine_day.id}`);
     }
   };
 

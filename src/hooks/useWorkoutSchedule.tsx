@@ -34,6 +34,7 @@ interface WorkoutSession {
 export interface ScheduleDay {
   id: string;
   assignment_id: string;
+  routine_id: string;
   scheduled_date: string;
   is_rest_day: boolean;
   is_completed: boolean;
@@ -218,6 +219,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
                 scheduled_date: dateStr,
                 is_rest_day: false,
                 is_completed: currentDate === today ? true : false,
@@ -234,6 +236,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 daySchedule = {
                   id: `${assignment.id}-${dateStr}`,
                   assignment_id: assignment.id,
+                  routine_id: assignment.routine_id,
                   scheduled_date: dateStr,
                   is_rest_day: false,
                   is_completed: currentDate === today ? true : false,
@@ -249,6 +252,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 daySchedule = {
                   id: `${assignment.id}-${dateStr}`,
                   assignment_id: assignment.id,
+                  routine_id: assignment.routine_id,
                   scheduled_date: dateStr,
                   is_rest_day: true,
                   is_completed: false,
@@ -263,6 +267,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
                 scheduled_date: dateStr,
                 is_rest_day: completedSession ? false : true,
                 is_completed: completedSession ? true : false,
@@ -281,6 +286,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
                 scheduled_date: dateStr,
                 is_rest_day: !shouldHaveWorkout,
                 is_completed: shouldHaveWorkout && completedSession ? true : false,
