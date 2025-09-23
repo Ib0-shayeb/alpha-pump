@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Moon, CheckCircle, XCircle, SkipForward, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -175,8 +176,16 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
 
             {routineSchedules.map((row) => (
               <div key={row.assignment_id}>
-                <div className="mb-2 text-sm font-medium text-muted-foreground">
-                  {row.routine_name}
+                <div className="mb-2 text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <span>{row.routine_name}</span>
+                  {(() => {
+                    const planType = row.schedule.find(s => s.assignment?.plan_type)?.assignment?.plan_type as ('strict' | 'flexible' | undefined);
+                    return planType ? (
+                      <Badge variant={planType === 'flexible' ? 'secondary' : 'default'}>
+                        {planType === 'flexible' ? 'Flexible Plan' : 'Strict Plan'}
+                      </Badge>
+                    ) : null;
+                  })()}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                   {getWeekDays().map((date, index) => {

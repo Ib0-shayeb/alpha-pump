@@ -38,6 +38,7 @@ const WorkoutRoutines = () => {
   const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
   const [selectedRoutineForActivation, setSelectedRoutineForActivation] = useState<{id: string, name: string} | null>(null);
   const [activeRoutineIds, setActiveRoutineIds] = useState<Set<string>>(new Set());
+  const [activeRoutinePlanType, setActiveRoutinePlanType] = useState<Record<string, 'strict' | 'flexible'>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedRoutineForEdit, setSelectedRoutineForEdit] = useState<{id: string, name: string} | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -115,7 +116,7 @@ const WorkoutRoutines = () => {
       // Fetch active assignments to determine which routines are active for this user
       const { data: activeAssignments, error: activeErr } = await supabase
         .from('client_routine_assignments')
-        .select('routine_id')
+        .select('routine_id, plan_type')
         .eq('client_id', user.id)
         .eq('is_active', true);
 
@@ -123,6 +124,11 @@ const WorkoutRoutines = () => {
 
       const activeSet = new Set<string>((activeAssignments || []).map((a: any) => a.routine_id));
       setActiveRoutineIds(activeSet);
+      const planTypeMap: Record<string, 'strict' | 'flexible'> = {};
+      (activeAssignments || []).forEach((a: any) => {
+        if (a.routine_id && a.plan_type) planTypeMap[a.routine_id] = a.plan_type;
+      });
+      setActiveRoutinePlanType(planTypeMap);
     } catch (error) {
       console.error('Error fetching routines:', error);
       toast({
@@ -486,6 +492,11 @@ const WorkoutRoutines = () => {
               <h3 className="text-lg font-semibold">{routine.name}</h3>
               {isActive && (
                 <Badge className="bg-gradient-primary text-primary-foreground">Active</Badge>
+              )}
+              {isActive && activeRoutinePlanType[routine.id] && (
+                <Badge variant={activeRoutinePlanType[routine.id] === 'flexible' ? 'secondary' : 'default'}>
+                  {activeRoutinePlanType[routine.id] === 'flexible' ? 'Flexible Plan' : 'Strict Plan'}
+                </Badge>
               )}
               {routine.is_public && (
                 <Badge variant="outline">

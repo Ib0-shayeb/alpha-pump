@@ -3,120 +3,117 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Calendar, Dumbbell, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkoutSchedule } from "@/hooks/useWorkoutSchedule";
+import { format } from "date-fns";
 
-interface TodaysRoutine {
+interface TodayWorkoutItem {
+  assignment_id: string;
   routine_id: string;
   routine_name: string;
-  day_id: string;
-  day_name: string;
-  day_number: number;
-  exercises_count: number;
+  routine_day_id: string;
+  routine_day_name: string;
+  exercises_count?: number;
 }
 
 const StartWorkout = () => {
-  const [todaysRoutine, setTodaysRoutine] = useState<TodaysRoutine | null>(null);
+  const [todayItems, setTodayItems] = useState<TodayWorkoutItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+  const { routineSchedules, loading: scheduleLoading } = useWorkoutSchedule(user?.id || '', new Date());
+  const [completedTodayIds, setCompletedTodayIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const fetchTodaysRoutine = async () => {
+    if (!user) return;
+    if (scheduleLoading) return;
+
+    const items: TodayWorkoutItem[] = (routineSchedules || []).flatMap(rs =>
+      (rs.schedule || [])
+        .filter(d => d.scheduled_date === todayStr && !d.is_rest_day && d.routine_day?.id)
+        .map(d => ({
+          assignment_id: d.assignment_id,
+          routine_id: d.routine_id,
+          routine_name: rs.routine_name,
+          routine_day_id: d.routine_day!.id,
+          routine_day_name: d.routine_day!.name,
+        }))
+    );
+
+    // Exclude completed/started today by routine_day_id
+    const filtered = items.filter(i => !completedTodayIds.has(i.routine_day_id));
+    setTodayItems(filtered);
+    setLoading(false);
+  }, [user, routineSchedules, scheduleLoading, todayStr, completedTodayIds]);
+
+  // Fetch today's sessions and exclude those routine_day_ids
+  useEffect(() => {
+    const fetchTodaysSessions = async () => {
       if (!user) return;
-      
       try {
-        // Get active routines for the user
-        const { data: activeRoutines, error: routinesError } = await supabase
-          .from('workout_routines')
-          .select(`
-            id,
-            name,
-            days_per_week,
-            routine_days (
-              id,
-              name,
-              day_number,
-              routine_exercises (count)
-            )
-          `)
+        const dayStart = `${todayStr}`;
+        const dayEnd = `${todayStr} 23:59:59`;
+        const { data, error } = await supabase
+          .from('workout_sessions')
+          .select('routine_day_id')
           .eq('user_id', user.id)
-          .eq('is_active', true);
-
-        if (routinesError) throw routinesError;
-
-        if (activeRoutines && activeRoutines.length > 0) {
-          const routine = activeRoutines[0];
-          
-          // Get the active assignment for this routine
-          const { data: assignment, error: assignmentError } = await supabase
-            .from('client_routine_assignments')
-            .select('id')
-            .eq('client_id', user.id)
-            .eq('routine_id', routine.id)
-            .eq('is_active', true)
-            .single();
-
-          if (!assignmentError && assignment) {
-            // For now, use day of week approach for all plans
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const routineDay = routine.routine_days[dayOfWeek % routine.routine_days.length];
-            
-            if (routineDay) {
-              setTodaysRoutine({
-                routine_id: routine.id,
-                routine_name: routine.name,
-                day_id: routineDay.id,
-                day_name: routineDay.name,
-                day_number: routineDay.day_number,
-                exercises_count: routineDay.routine_exercises?.length || 0
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching today\'s routine:', error);
-      } finally {
-        setLoading(false);
+          .gte('start_time', dayStart)
+          .lte('start_time', dayEnd);
+        if (error) throw error;
+        const done = new Set<string>();
+        (data || []).forEach((s: any) => {
+          if (s.routine_day_id) done.add(s.routine_day_id);
+        });
+        setCompletedTodayIds(done);
+      } catch (err) {
+        console.error('Failed to fetch today\'s sessions', err);
       }
     };
+    fetchTodaysSessions();
+  }, [user, todayStr]);
 
-    fetchTodaysRoutine();
-  }, [user]);
+  useEffect(() => {
+    const fetchCounts = async () => {
+      if (todayItems.length === 0) return;
+      try {
+        const ids = todayItems.map(i => i.routine_day_id);
+        const { data, error } = await supabase
+          .from('routine_exercises')
+          .select('routine_day_id, id')
+          .in('routine_day_id', ids);
+        if (error) throw error;
+        const counts = new Map<string, number>();
+        (data || []).forEach((row: any) => {
+          counts.set(row.routine_day_id, (counts.get(row.routine_day_id) || 0) + 1);
+        });
+        setTodayItems(prev => prev.map(p => ({ ...p, exercises_count: counts.get(p.routine_day_id) || 0 })));
+      } catch (err) {
+        console.error('Failed to fetch exercise counts', err);
+      }
+    };
+    fetchCounts();
+  }, [todayItems.length]);
 
-  const startTodaysWorkout = async () => {
-    if (!user || !todaysRoutine) return;
-    
+  const startWorkout = async (item: TodayWorkoutItem) => {
+    if (!user) return;
     try {
-      // Get the active assignment for this routine
-      const { data: assignment, error: assignmentError } = await supabase
-        .from('client_routine_assignments')
-        .select('id')
-        .eq('client_id', user.id)
-        .eq('routine_id', todaysRoutine.routine_id)
-        .eq('is_active', true)
-        .single();
-
-      if (assignmentError) throw assignmentError;
-
       const { data: session, error } = await supabase
         .from('workout_sessions')
         .insert({
           user_id: user.id,
-          routine_id: todaysRoutine.routine_id,
-          routine_day_id: todaysRoutine.day_id,
-          assignment_id: assignment.id,
-          name: todaysRoutine.day_name,
+          routine_id: item.routine_id,
+          routine_day_id: item.routine_day_id,
+          assignment_id: item.assignment_id,
+          name: item.routine_day_name,
           start_time: new Date().toISOString()
         })
         .select()
         .single();
 
       if (error) throw error;
-      
-      // Navigate to active workout with routine exercises
-      window.location.href = `/active-workout?sessionId=${session.id}&routineDay=${todaysRoutine.day_id}`;
+      window.location.href = `/active-workout?sessionId=${session.id}&routineDay=${item.routine_day_id}`;
     } catch (error) {
       console.error('Error starting workout:', error);
     }
@@ -146,28 +143,34 @@ const StartWorkout = () => {
                 <div className="h-3 bg-muted rounded w-1/3"></div>
               </div>
             </Card>
-          ) : todaysRoutine ? (
-            <Card className="p-6 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="font-medium text-lg mb-1">{todaysRoutine.day_name}</h4>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    From {todaysRoutine.routine_name} • Day {todaysRoutine.day_number}
-                  </p>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Dumbbell size={14} className="mr-1" />
-                    <span>{todaysRoutine.exercises_count} exercises</span>
+          ) : todayItems.length > 0 ? (
+            <div className="space-y-3">
+              {todayItems.map(item => (
+                <Card key={`${item.assignment_id}-${item.routine_day_id}`} className="p-6 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-lg mb-1">{item.routine_day_name}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        From {item.routine_name}
+                      </p>
+                      {typeof item.exercises_count === 'number' && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Dumbbell size={14} className="mr-1" />
+                          <span>{item.exercises_count} exercises</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      className="bg-gradient-primary hover:shadow-primary"
+                      onClick={() => startWorkout(item)}
+                    >
+                      <Play size={16} className="mr-2" />
+                      Start Workout
+                    </Button>
                   </div>
-                </div>
-                <Button 
-                  className="bg-gradient-primary hover:shadow-primary"
-                  onClick={startTodaysWorkout}
-                >
-                  <Play size={16} className="mr-2" />
-                  Start Today's Workout
-                </Button>
-              </div>
-            </Card>
+                </Card>
+              ))}
+            </div>
           ) : (
             <Card className="p-6 bg-gradient-card shadow-card border-border/50">
               <div className="text-center py-4">
