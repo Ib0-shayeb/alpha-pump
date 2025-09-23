@@ -39,10 +39,12 @@ export interface ScheduleDay {
   is_completed: boolean;
   was_skipped: boolean;
   routine_day?: {
+    id: string;
     name: string;
     description?: string;
   };
   workout_session?: {
+    id: string;
     name: string;
   };
   assignment?: {
@@ -221,6 +223,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 is_completed: currentDate === today ? true : false,
                 was_skipped: false,
                 routine_day: {
+                  id: expectedRoutineDay.id,
                   name: expectedRoutineDay.name,
                   description: expectedRoutineDay.description
                 },
@@ -236,6 +239,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                   is_completed: currentDate === today ? true : false,
                   was_skipped: false,
                   routine_day: {
+                    id: expectedRoutineDay.id,
                     name: expectedRoutineDay.name,
                     description: expectedRoutineDay.description
                   },
@@ -264,6 +268,11 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 is_completed: completedSession ? true : false,
                 was_skipped: false,
                 routine_day: completedSession ? {
+                  id: completedSession.routine_day_id!,
+                  name: completedSession.name
+                } : undefined,
+                workout_session: completedSession ? {
+                  id: completedSession.id,
                   name: completedSession.name
                 } : undefined,
                 assignment: { plan_type: assignment.plan_type }
@@ -277,6 +286,11 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 is_completed: shouldHaveWorkout && completedSession ? true : false,
                 was_skipped: shouldHaveWorkout && !completedSession,
                 routine_day: shouldHaveWorkout && completedSession ? {
+                  id: completedSession.routine_day_id!,
+                  name: completedSession.name
+                } : undefined,
+                workout_session: completedSession ? {
+                  id: completedSession.id,
                   name: completedSession.name
                 } : undefined,
                 assignment: { plan_type: assignment.plan_type }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ interface WorkoutCalendarProps {
 
 export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const navigate = useNavigate();
   
   const { schedule, routineSchedules, loading } = useWorkoutSchedule(
     canSeeWorkoutHistory ? clientId : '', 
@@ -61,6 +63,16 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
     setCurrentWeek(prev => 
       direction === 'prev' ? subWeeks(prev, 1) : addWeeks(prev, 1)
     );
+  };
+
+  const handleDayClick = (scheduleDay: ScheduleDay) => {
+    if (scheduleDay.is_completed && scheduleDay.workout_session?.id) {
+      // Navigate to completed workout session details
+      navigate(`/workout-session/${scheduleDay.workout_session.id}`);
+    } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
+      // Navigate to scheduled routine details
+      navigate(`/routine/${scheduleDay.assignment_id}/day/${scheduleDay.routine_day.id}`);
+    }
   };
 
   if (!canSeeWorkoutHistory) {
@@ -131,10 +143,17 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
                       const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                       
                       return (
-                        <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} 
-                             className={`p-2 rounded-lg border-2 ${
-                               isToday(date) ? 'border-primary' : 'border-border'
-                             } ${bgColor} transition-colors min-h-[120px] flex flex-col items-center justify-between`}>
+                        <div 
+                          key={`${routineSchedule.assignment_id}-${date.toISOString()}`} 
+                          className={`p-2 rounded-lg border-2 ${
+                            isToday(date) ? 'border-primary' : 'border-border'
+                          } ${bgColor} transition-colors min-h-[120px] flex flex-col items-center justify-between ${
+                            (scheduleDay?.is_completed && scheduleDay?.workout_session?.id) || 
+                            (!scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
+                              ? 'cursor-pointer hover:opacity-80' : ''
+                          }`}
+                          onClick={() => scheduleDay && handleDayClick(scheduleDay)}
+                        >
                           
                           {/* Day and Date */}
                           <div className="text-center mb-1">
@@ -197,9 +216,16 @@ export const WorkoutCalendar = ({ clientId, canSeeWorkoutHistory }: WorkoutCalen
                     
                     return (
                       <div key={`${routineSchedule.assignment_id}-${date.toISOString()}`} className="flex flex-col items-center">
-                        <div className={`w-8 h-4 rounded-sm flex items-center justify-center border-2 ${
-                          isToday(date) ? 'border-primary' : 'border-border'
-                        } ${bgColor} transition-colors`}>
+                        <div 
+                          className={`w-8 h-4 rounded-sm flex items-center justify-center border-2 ${
+                            isToday(date) ? 'border-primary' : 'border-border'
+                          } ${bgColor} transition-colors ${
+                            (scheduleDay?.is_completed && scheduleDay?.workout_session?.id) || 
+                            (!scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
+                              ? 'cursor-pointer hover:opacity-80' : ''
+                          }`}
+                          onClick={() => scheduleDay && handleDayClick(scheduleDay)}
+                        >
                         </div>
                         <div className="text-xs mt-1 text-center truncate max-w-full">
                           {scheduleDay && !scheduleDay.is_rest_day && scheduleDay.routine_day && (

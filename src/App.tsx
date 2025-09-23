@@ -18,6 +18,8 @@ import { ClientDetails } from "./pages/ClientDetails";
 import { TrainerProfile } from "./components/TrainerProfile";
 import { TrainerProfileEdit } from "./pages/TrainerProfileEdit";
 import AITrainer from "./pages/AITrainer";
+import { WorkoutSessionDetails } from "./pages/WorkoutSessionDetails";
+import { RoutineDetails } from "./pages/RoutineDetails";
 import NotFound from "./pages/NotFound";
 import AuthWrapper from "./components/AuthWrapper";
 
@@ -42,6 +44,8 @@ const AppContent = () => {
         <Route path="/trainer/profile/edit" element={<AuthWrapper><TrainerProfileEdit /></AuthWrapper>} />
         <Route path="/trainer/:trainerId" element={<AuthWrapper><TrainerProfile /></AuthWrapper>} />
         <Route path="/trainer/client/:clientId" element={<AuthWrapper><ClientDetails /></AuthWrapper>} />
+        <Route path="/workout-session/:sessionId" element={<AuthWrapper><WorkoutSessionDetails /></AuthWrapper>} />
+        <Route path="/routine/:routineId/day/:dayId" element={<AuthWrapper><RoutineDetails /></AuthWrapper>} />
         <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
