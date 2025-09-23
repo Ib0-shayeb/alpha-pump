@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +19,7 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
   const [selectedSkipDay, setSelectedSkipDay] = useState<ScheduleDay | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   console.log('ClientWorkoutCalendar - user:', user?.id, 'currentWeek:', currentWeek);
   
@@ -105,6 +107,16 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
     );
   };
 
+  const handleDayClick = (scheduleDay: ScheduleDay) => {
+    if (scheduleDay.is_completed && scheduleDay.workout_session?.id) {
+      // Navigate to completed workout session details
+      navigate(`/workout-session/${scheduleDay.workout_session.id}`);
+    } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
+      // Navigate to scheduled routine details
+      navigate(`/routine/${scheduleDay.assignment_id}/day/${scheduleDay.routine_day.id}`);
+    }
+  };
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -173,9 +185,16 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
 
                     return (
                       <div key={date.toISOString()} className="">
-                        <div className={`min-h-[120px] p-2 rounded-lg border-2 ${
-                          isToday(date) ? 'border-primary' : 'border-border'
-                        } ${bgColor} transition-colors relative flex flex-col items-center justify-between`}>
+                        <div 
+                          className={`min-h-[120px] p-2 rounded-lg border-2 ${
+                            isToday(date) ? 'border-primary' : 'border-border'
+                          } ${bgColor} transition-colors relative flex flex-col items-center justify-between ${
+                            (scheduleDay?.is_completed && scheduleDay?.workout_session?.id) || 
+                            (!scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
+                              ? 'cursor-pointer hover:opacity-80' : ''
+                          }`}
+                          onClick={() => scheduleDay && handleDayClick(scheduleDay)}
+                        >
                           
                           {/* Icon */}
                           <Icon size={14} className="text-current mb-1" />
