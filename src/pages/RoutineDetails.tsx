@@ -112,6 +112,34 @@ export const RoutineDetails = () => {
     }
   };
 
+  const startSpecificWorkout = async () => {
+    if (!user || !routine || !selectedDay) return;
+    
+    try {
+      const { data: session, error } = await supabase
+        .from('workout_sessions')
+        .insert({
+          user_id: user.id,
+          routine_id: routine.id,
+          routine_day_id: selectedDay.id,
+          name: selectedDay.name,
+          start_time: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      navigate(`/active-workout?sessionId=${session.id}&routineDay=${selectedDay.id}`);
+    } catch (error) {
+      console.error('Error starting workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start workout session",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getTotalExercises = () => {
     return selectedDay?.routine_exercises.length || 0;
   };
@@ -283,10 +311,9 @@ export const RoutineDetails = () => {
                   </div>
                 </div>
                 
-                {/* Start Workout Button */}
                 <div className="mt-6">
                   <Button 
-                    onClick={() => navigate('/start-workout')} 
+                    onClick={startSpecificWorkout} 
                     className="w-full"
                     size="lg"
                   >
