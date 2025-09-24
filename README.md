@@ -19,11 +19,10 @@ Simply visit the link above to start using the app immediately. Create an accoun
 - Save and manage your personal routine library
 - Activate routines to track your training schedule
 
-**📚 Exercise Library**
-- Browse a comprehensive database of exercises
-- Filter by muscle groups, equipment, and exercise type
-- View detailed instructions and form tips
-- Track which exercises you've used in your routines
+**📊 Progress Tracking**
+- View workout history and statistics
+- Track your training consistency
+- Monitor performance improvements over time
 
 **🎯 Custom Workouts**
 - Create one-off workout sessions
@@ -31,10 +30,11 @@ Simply visit the link above to start using the app immediately. Create an accoun
 - Track workout duration and performance
 - Add notes and observations for each session
 
-**📊 Progress Tracking**
-- View workout history and statistics
-- Track your training consistency
-- Monitor performance improvements over time
+**📚 Exercise Library**
+- Browse a comprehensive database of exercises
+- Filter by muscle groups, equipment, and exercise type
+- View detailed instructions and form tips
+- Track which exercises you've used in your routines
 
 ### AI Trainer Features
 
@@ -87,6 +87,15 @@ The app will be available at `http://localhost:5173`
 - `npm run preview` - Preview production build locally
 - `npm run lint` - Run ESLint for code quality
 
+### Environment Setup
+
+For local development, you'll need to set up environment variables for:
+
+- Supabase project URL and keys
+- Google Gemini API key for AI features
+
+Contact the project maintainer for environment configuration details.
+
 ## 🏗️ Technology Stack
 
 - **Frontend**: React 18 with TypeScript
@@ -97,12 +106,3 @@ The app will be available at `http://localhost:5173`
 - **AI Integration**: Google Gemini API
 - **State Management**: React Query (TanStack Query)
 - **Routing**: React Router v6
-
-## 🔧 Environment Setup
-
-For local development, you'll need to set up environment variables for:
-
-- Supabase project URL and keys
-- Google Gemini API key for AI features
-
-Contact the project maintainer for environment configuration details.
