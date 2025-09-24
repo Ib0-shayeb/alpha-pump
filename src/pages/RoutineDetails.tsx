@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, Dumbbell, Clock, Target, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, Dumbbell, Clock, Target, FileText, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -281,6 +281,18 @@ export const RoutineDetails = () => {
                     </div>
                     <div className="text-sm text-muted-foreground">Avg Rest</div>
                   </div>
+                </div>
+                
+                {/* Start Workout Button */}
+                <div className="mt-6">
+                  <Button 
+                    onClick={() => navigate('/start-workout')} 
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Play size={20} className="mr-2" />
+                    Start Workout
+                  </Button>
                 </div>
               </CardContent>
             </Card>
