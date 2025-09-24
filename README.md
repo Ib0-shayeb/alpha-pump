@@ -1,73 +1,108 @@
-# Welcome to your Lovable project
+# Alpha Pump - AI-Powered Fitness App
 
-## Project info
+A comprehensive fitness application that combines traditional workout management with AI-powered personal training.
 
-**URL**: https://lovable.dev/projects/edefa064-2b91-4333-85be-30546fa0b3bc
+## 🚀 Try the App
 
-## How can I edit this code?
+**Live Demo**: [https://preview--alpha-pump.lovable.app](https://preview--alpha-pump.lovable.app)
 
-There are several ways of editing your application.
+Simply visit the link above to start using the app immediately. Create an account to access all features.
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/edefa064-2b91-4333-85be-30546fa0b3bc) and start prompting.
+### Solo Fitness Features
 
-Changes made via Lovable will be committed automatically to this repo.
+**🏋️ Workout Routines**
+- Create custom workout routines with multiple training days
+- Organize exercises by muscle groups (Push, Pull, Legs, etc.)
+- Set reps, sets, weights, and rest periods for each exercise
+- Save and manage your personal routine library
+- Activate routines to track your training schedule
 
-**Use your preferred IDE**
+**📚 Exercise Library**
+- Browse a comprehensive database of exercises
+- Filter by muscle groups, equipment, and exercise type
+- View detailed instructions and form tips
+- Track which exercises you've used in your routines
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+**🎯 Custom Workouts**
+- Create one-off workout sessions
+- Log sets, reps, weights, and RPE (Rate of Perceived Exertion)
+- Track workout duration and performance
+- Add notes and observations for each session
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**📊 Progress Tracking**
+- View workout history and statistics
+- Track your training consistency
+- Monitor performance improvements over time
 
-Follow these steps:
+### AI Trainer Features
+
+**🤖 AI Fitness Coach**
+- 24/7 AI-powered personal trainer
+- Chat interface for instant fitness guidance
+- Get personalized workout recommendations
+- Ask questions about form, nutrition, and training
+
+**💬 Smart Conversations**
+- Persistent chat history with your AI trainer
+- Context-aware responses based on your fitness goals
+- Multiple conversation threads for different topics
+
+**📋 AI-Generated Workouts**
+- Request custom workout plans through chat
+- AI creates structured routines with proper progression
+- Automatically saves generated routines to your library
+- Tailored to your experience level and available equipment
+
+## 🛠️ Local Development Setup
+
+### Prerequisites
+
+- Node.js (v18 or higher) - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- npm or yarn package manager
+
+### Installation Steps
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd alpha-pump
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Available Scripts
 
-**Use GitHub Codespaces**
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build locally
+- `npm run lint` - Run ESLint for code quality
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🏗️ Technology Stack
 
-## What technologies are used for this project?
+- **Frontend**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **UI Components**: shadcn/ui with Radix UI primitives
+- **Styling**: Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
+- **AI Integration**: Google Gemini API
+- **State Management**: React Query (TanStack Query)
+- **Routing**: React Router v6
 
-This project is built with:
+## 🔧 Environment Setup
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+For local development, you'll need to set up environment variables for:
 
-## How can I deploy this project?
+- Supabase project URL and keys
+- Google Gemini API key for AI features
 
-Simply open [Lovable](https://lovable.dev/projects/edefa064-2b91-4333-85be-30546fa0b3bc) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Contact the project maintainer for environment configuration details.
