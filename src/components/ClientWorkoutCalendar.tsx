@@ -113,9 +113,12 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
       // If completed and has workout session ID, go to session details
       if (scheduleDay.workout_session?.id) {
         navigate(`/workout-session/${scheduleDay.workout_session.id}`);
-      } else {
+      } else if (scheduleDay.routine_day?.id) {
         // If completed but no session ID, go to routine details to view what was completed
         navigate(`/routine/${scheduleDay.routine_id}/day/${scheduleDay.routine_day.id}`);
+      } else {
+        // Fallback: if no routine_day but we have routine_id, go to routine details
+        navigate(`/routines/${scheduleDay.routine_id}`);
       }
     } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
       // For scheduled workouts (any day, not just today), go to routine details
