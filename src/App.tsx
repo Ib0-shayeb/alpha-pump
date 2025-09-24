@@ -22,6 +22,7 @@ import { WorkoutSessionDetails } from "./pages/WorkoutSessionDetails";
 import { RoutineDetails } from "./pages/RoutineDetails";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
+import EmailConfirmation from "./pages/EmailConfirmation";
 import AuthWrapper from "./components/AuthWrapper";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const AppContent = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/confirm-email" element={<EmailConfirmation />} />
         <Route path="/" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
         <Route path="/routines" element={<AuthWrapper><WorkoutRoutines /></AuthWrapper>} />
