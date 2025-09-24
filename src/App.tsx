@@ -21,6 +21,7 @@ import AITrainer from "./pages/AITrainer";
 import { WorkoutSessionDetails } from "./pages/WorkoutSessionDetails";
 import { RoutineDetails } from "./pages/RoutineDetails";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 import AuthWrapper from "./components/AuthWrapper";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const AppContent = () => {
         <Route path="/active-workout" element={<AuthWrapper><ActiveWorkout /></AuthWrapper>} />
         <Route path="/inbox" element={<AuthWrapper><Inbox /></AuthWrapper>} />
         <Route path="/trainer" element={<AuthWrapper><TrainerView /></AuthWrapper>} />
+        <Route path="/settings" element={<AuthWrapper><Settings /></AuthWrapper>} />
         <Route path="/ai-trainer" element={<AuthWrapper><AITrainer /></AuthWrapper>} />
         <Route path="/trainer/profile/edit" element={<AuthWrapper><TrainerProfileEdit /></AuthWrapper>} />
         <Route path="/trainer/:trainerId" element={<AuthWrapper><TrainerProfile /></AuthWrapper>} />

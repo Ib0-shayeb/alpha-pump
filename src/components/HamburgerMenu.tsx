@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut, User } from "lucide-react";
+import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut, User, Users, Settings as SettingsIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,8 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
   
   const mainHref = userRole === 'trainer' ? '/trainer' : '/';
 
-  const menuItems = [
+  type MenuItem = { label: string; icon: any; href?: string; badge?: number };
+  const menuItems: MenuItem[] = [
     {
       label: "Main",
       icon: Home,
@@ -51,11 +52,13 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
       href: "/inbox",
       badge: unreadCount > 0 ? unreadCount : undefined,
     },
-    ...(userRole === 'trainer' ? [{
-      label: "Trainer Profile",
-      icon: User,
-      href: "/trainer/profile/edit",
-    }] : []),
+    ...(userRole === 'trainer' ? [
+      {
+        label: "Trainer Profile",
+        icon: User,
+        href: "/trainer/profile/edit",
+      }
+    ] : []),
     {
       label: "Workout Routines",
       icon: Calendar,
@@ -70,6 +73,11 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
       label: "Browse Exercises",
       icon: Dumbbell,
       href: "/exercises",
+    },
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      href: "/settings",
     },
   ];
 
@@ -93,10 +101,10 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
           <h2 className="text-lg font-semibold">Menu</h2>
         </div>
         <nav className="space-y-2">
-          {menuItems.map((item) => (
-            incompleteProfile ? (
+          {menuItems.map((item, idx) => (
+            incompleteProfile || !item.href ? (
               <div
-                key={item.href}
+                key={item.href || `${item.label}-${idx}`}
                 className="flex items-center justify-between p-3 rounded-lg opacity-50 cursor-not-allowed"
               >
                 <div className="flex items-center space-x-3">
@@ -128,6 +136,48 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
               </Link>
             )
           ))}
+
+          {/* Secondary section: My Trainers and Clients */}
+          <div className="pt-4 mt-4 border-t border-border">
+            {([
+              { label: "My Trainers", icon: Users } as MenuItem,
+              { label: "Clients", icon: Users, href: "/trainer" } as MenuItem,
+            ] as MenuItem[]).map((item, idx) => (
+              incompleteProfile || !item.href ? (
+                <div
+                  key={item.href || `${item.label}-secondary-${idx}`}
+                  className="flex items-center justify-between p-3 rounded-lg opacity-50 cursor-not-allowed"
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon size={20} className="text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </Badge>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon size={20} className="text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </Badge>
+                  )}
+                </Link>
+              )
+            ))}
+          </div>
           
           <div className="pt-4 mt-4 border-t border-border">
             <Button

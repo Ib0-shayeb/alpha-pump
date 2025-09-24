@@ -1,7 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Navigation } from "./Navigation";
 import { HamburgerMenu } from "./HamburgerMenu";
-import { RoleToggle } from "./RoleToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -61,7 +60,7 @@ export const Layout = ({ children, title }: LayoutProps) => {
                   {title}
                 </h1>
               </div>
-              <RoleToggle />
+              {/* Role toggle removed */}
             </div>
           </div>
         </header>

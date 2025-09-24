@@ -7,8 +7,6 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ClientConnectRequest } from "@/components/ClientConnectRequest";
-import { PrivacySettings } from "@/components/PrivacySettings";
 import { ClientWorkoutCalendar } from "@/components/ClientWorkoutCalendar";
  
 import { endOfWeek, format, startOfWeek } from "date-fns";
@@ -220,11 +218,9 @@ const Dashboard = () => {
 
         {/* Recent Activity removed */}
 
-        {/* Trainer Connection for Clients */}
-        <ClientConnectRequest />
+        {/* Trainer Connection removed */}
         
-        {/* Privacy Settings for Clients */}
-        {userRole === 'client' && <PrivacySettings />}
+        {/* Privacy Settings moved to Settings page */}
       </div>
     </Layout>
   );
