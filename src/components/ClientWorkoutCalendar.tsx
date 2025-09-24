@@ -108,12 +108,12 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
     );
   };
 
-  const handleDayClick = (scheduleDay: ScheduleDay) => {
+  const handleDayClick = (scheduleDay: ScheduleDay, date: Date) => {
     if (scheduleDay.is_completed && scheduleDay.workout_session?.id) {
       // Navigate to completed workout session details
       navigate(`/workout-session/${scheduleDay.workout_session.id}`);
-    } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
-      // Navigate to scheduled routine details using routine_id instead of assignment_id
+    } else if (isToday(date) && !scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
+      // Only navigate to scheduled routine details if it's today and there's a scheduled workout
       navigate(`/routine/${scheduleDay.routine_id}/day/${scheduleDay.routine_day.id}`);
     }
   };
@@ -202,7 +202,7 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
                             (!scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
                               ? 'cursor-pointer hover:opacity-80' : ''
                           }`}
-                          onClick={() => scheduleDay && handleDayClick(scheduleDay)}
+                          onClick={() => scheduleDay && handleDayClick(scheduleDay, date)}
                         >
                           
                           {/* Icon */}
