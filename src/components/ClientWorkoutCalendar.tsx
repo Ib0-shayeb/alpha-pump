@@ -109,20 +109,16 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
   };
 
   const handleDayClick = (scheduleDay: ScheduleDay, date: Date) => {
-    console.log('Day clicked:', { 
-      isToday: isToday(date), 
-      isCompleted: scheduleDay.is_completed,
-      isRestDay: scheduleDay.is_rest_day,
-      hasRoutineDay: !!scheduleDay.routine_day?.id,
-      hasWorkoutSession: !!scheduleDay.workout_session?.id,
-      routineId: scheduleDay.routine_id
-    });
-    
-    if (scheduleDay.is_completed && scheduleDay.workout_session?.id) {
-      // Navigate to completed workout session details
-      navigate(`/workout-session/${scheduleDay.workout_session.id}`);
-    } else if (isToday(date) && !scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
-      // Only navigate to scheduled routine details if it's today and there's a scheduled workout
+    if (scheduleDay.is_completed) {
+      // If completed and has workout session ID, go to session details
+      if (scheduleDay.workout_session?.id) {
+        navigate(`/workout-session/${scheduleDay.workout_session.id}`);
+      } else {
+        // If completed but no session ID, go to routine details to view what was completed
+        navigate(`/routine/${scheduleDay.routine_id}/day/${scheduleDay.routine_day.id}`);
+      }
+    } else if (!scheduleDay.is_rest_day && scheduleDay.routine_day?.id) {
+      // For scheduled workouts (any day, not just today), go to routine details
       navigate(`/routine/${scheduleDay.routine_id}/day/${scheduleDay.routine_day.id}`);
     }
   };
@@ -207,8 +203,8 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
                           className={`min-h-[120px] p-2 rounded-lg border-2 ${
                             isToday(date) ? 'border-primary' : 'border-border'
                           } ${bgColor} transition-colors relative flex flex-col items-center justify-between ${
-                            (scheduleDay?.is_completed && scheduleDay?.workout_session?.id) || 
-                            (isToday(date) && !scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
+                            (scheduleDay?.is_completed) || 
+                            (!scheduleDay?.is_rest_day && scheduleDay?.routine_day?.id) 
                               ? 'cursor-pointer hover:opacity-80' : ''
                           }`}
                           onClick={() => scheduleDay && handleDayClick(scheduleDay, date)}
