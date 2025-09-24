@@ -10,20 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { ClientConnectRequest } from "@/components/ClientConnectRequest";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { ClientWorkoutCalendar } from "@/components/ClientWorkoutCalendar";
-import { TrainerView } from "./TrainerView";
-
-interface RecentWorkout {
-  id: string;
-  name: string;
-  created_at: string;
-  exercises: Array<{
-    name: string;
-    best_set: {
-      weight: number | null;
-      reps: number | null;
-    };
-  }>;
-}
+ 
+import { endOfWeek, format, startOfWeek } from "date-fns";
 
 interface ActiveRoutine {
   id: string;
@@ -38,12 +26,13 @@ interface ActiveRoutine {
 }
 
 const Dashboard = () => {
-  const [recentWorkouts, setRecentWorkouts] = useState<RecentWorkout[]>([]);
   const [activeRoutines, setActiveRoutines] = useState<ActiveRoutine[]>([]);
   const [loading, setLoading] = useState(true);
   const [routinesLoading, setRoutinesLoading] = useState(true);
   const [userRole, setUserRole] = useState<'client' | 'trainer'>('client');
   const { user } = useAuth();
+  const [totalWorkouts, setTotalWorkouts] = useState<number>(0);
+  const [workoutsThisWeek, setWorkoutsThisWeek] = useState<number>(0);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -119,67 +108,44 @@ const Dashboard = () => {
     }
   }, [user, userRole]);
 
+  // Removed recent activity feature
+
   useEffect(() => {
-    const fetchRecentActivity = async () => {
+    const fetchStats = async () => {
       if (!user) return;
-      
       try {
-        // Get recent workout sessions with exercises and sets
-        const { data: sessions, error } = await supabase
+        // Total completed workouts (end_time not null)
+        const { count: totalCount, error: totalErr } = await supabase
           .from('workout_sessions')
-          .select(`
-            id,
-            name,
-            created_at,
-            workout_exercises (
-              exercise_name,
-              workout_sets (
-                weight,
-                reps
-              )
-            )
-          `)
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        if (totalErr) throw totalErr;
+        setTotalWorkouts(totalCount || 0);
+
+        // Workouts this week (Mon-Sun)
+        const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd 23:59:59');
+        const { count: weekCount, error: weekErr } = await supabase
+          .from('workout_sessions')
+          .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .not('end_time', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        if (error) throw error;
-
-        const formattedWorkouts = sessions?.map(session => ({
-          id: session.id,
-          name: session.name,
-          created_at: session.created_at,
-          exercises: session.workout_exercises.map(exercise => {
-            // Find the best set (highest weight × reps)
-            const bestSet = exercise.workout_sets.reduce((best, current) => {
-              const currentScore = (current.weight || 0) * (current.reps || 1);
-              const bestScore = (best.weight || 0) * (best.reps || 1);
-              return currentScore > bestScore ? current : best;
-            }, exercise.workout_sets[0] || { weight: null, reps: null });
-
-            return {
-              name: exercise.exercise_name,
-              best_set: bestSet
-            };
-          })
-        })) || [];
-
-        setRecentWorkouts(formattedWorkouts);
-      } catch (error) {
-        console.error('Error fetching recent activity:', error);
-      } finally {
-        setLoading(false);
+          .gte('start_time', weekStart)
+          .lte('start_time', weekEnd)
+          ;
+        if (weekErr) throw weekErr;
+        setWorkoutsThisWeek(weekCount || 0);
+      } catch (e) {
+        console.error('Failed to fetch stats', e);
+        setTotalWorkouts(0);
+        setWorkoutsThisWeek(0);
       }
     };
-
-    fetchRecentActivity();
+    fetchStats();
   }, [user]);
 
   const stats = [
-    { label: "Workouts This Week", value: "3", icon: Dumbbell, color: "text-primary" },
-    { label: "Current Streak", value: "5 days", icon: Target, color: "text-workout-complete" },
-    { label: "Total Workouts", value: "24", icon: Trophy, color: "text-accent" },
+    { label: "Workouts This Week", value: String(workoutsThisWeek), icon: Dumbbell, color: "text-primary" },
+    { label: "Total Workouts", value: String(totalWorkouts), icon: Trophy, color: "text-accent" },
   ];
 
   return (
@@ -252,56 +218,7 @@ const Dashboard = () => {
 
         {/* Active Routines section removed for clients */}
 
-        {/* Recent Activity */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Recent Activity</h3>
-          {loading ? (
-            <Card className="p-4 bg-gradient-card shadow-card border-border/50">
-              <div className="animate-pulse space-y-3">
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-                <div className="space-y-2">
-                  <div className="h-3 bg-muted rounded"></div>
-                  <div className="h-3 bg-muted rounded w-2/3"></div>
-                </div>
-              </div>
-            </Card>
-          ) : recentWorkouts.length > 0 ? (
-            recentWorkouts.map((workout) => (
-              <Card key={workout.id} className="p-4 bg-gradient-card shadow-card border-border/50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">{workout.name}</h4>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(workout.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {workout.exercises.slice(0, 3).map((exercise, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{exercise.name}</span>
-                      <span className="text-primary font-medium">
-                        {exercise.best_set.weight ? `${exercise.best_set.weight} kg` : 'Bodyweight'} 
-                        {exercise.best_set.reps ? ` × ${exercise.best_set.reps}` : ''}
-                      </span>
-                    </div>
-                  ))}
-                  {workout.exercises.length > 3 && (
-                    <div className="text-xs text-muted-foreground">
-                      +{workout.exercises.length - 3} more exercises
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))
-          ) : (
-            <Card className="p-4 bg-gradient-card shadow-card border-border/50">
-              <div className="text-center py-4">
-                <Dumbbell size={32} className="mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">No recent workouts</p>
-                <p className="text-sm text-muted-foreground">Complete a workout to see your activity here</p>
-              </div>
-            </Card>
-          )}
-        </div>
+        {/* Recent Activity removed */}
 
         {/* Trainer Connection for Clients */}
         <ClientConnectRequest />
