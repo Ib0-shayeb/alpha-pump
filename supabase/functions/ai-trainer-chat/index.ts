@@ -302,7 +302,7 @@ INSTRUCTIONS:
 
 WHEN USER REQUESTS ROUTINE CREATION:
 - DO NOT generate Python code or text that looks like code
-- DO NOT write ```python print(default_api.createWorkoutRoutine(...))```
+- DO NOT write Python print statements with function calls
 - DIRECTLY CALL the createWorkoutRoutine function using Gemini's function calling feature
 - The function will be automatically executed in the user's app
 
