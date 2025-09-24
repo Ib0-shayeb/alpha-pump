@@ -350,6 +350,14 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 is_rest_day: false,
                 is_completed: true,
                 was_skipped: false,
+                routine_day: completedSession ? {
+                  id: completedSession.routine_day_id!,
+                  name: completedSession.name
+                } : undefined,
+                workout_session: completedSession ? {
+                  id: completedSession.id,
+                  name: completedSession.name
+                } : undefined,
                 assignment: { plan_type: assignment.plan_type }
               };
             } else {
