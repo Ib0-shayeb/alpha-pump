@@ -1,13 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Dumbbell, Calendar, Trophy, User, LogOut } from "lucide-react";
+import { Dumbbell, Calendar, Trophy, User, LogOut, Users, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   { name: "Dashboard", href: "/", icon: Dumbbell },
+  { name: "Social", href: "/social", icon: Users },
+  { name: "Discover", href: "/discover", icon: Search },
   { name: "Routines", href: "/routines", icon: Calendar },
-  { name: "Workouts", href: "/workouts", icon: Trophy },
   { name: "Profile", href: "/profile", icon: User },
 ];
 

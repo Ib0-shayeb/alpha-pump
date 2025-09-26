@@ -12,6 +12,8 @@ import StartWorkout from "./pages/StartWorkout";
 import CustomWorkout from "./pages/CustomWorkout";
 import ActiveWorkout from "./pages/ActiveWorkout";
 import WorkoutRoutines from "./pages/WorkoutRoutines";
+import Social from "./pages/Social";
+import Discover from "./pages/Discover";
 import { Inbox } from "./pages/Inbox";
 import { TrainerView } from "./pages/TrainerView";
 import { ClientDetails } from "./pages/ClientDetails";
@@ -34,6 +36,8 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/confirm-email" element={<EmailConfirmation />} />
         <Route path="/" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
+        <Route path="/social" element={<AuthWrapper><Social /></AuthWrapper>} />
+        <Route path="/discover" element={<AuthWrapper><Discover /></AuthWrapper>} />
         <Route path="/exercises" element={<AuthWrapper><Exercises /></AuthWrapper>} />
         <Route path="/routines" element={<AuthWrapper><WorkoutRoutines /></AuthWrapper>} />
         <Route path="/routines/create" element={<AuthWrapper><CreateRoutine /></AuthWrapper>} />

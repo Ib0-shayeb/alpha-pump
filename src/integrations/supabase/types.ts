@@ -74,6 +74,7 @@ export type Database = {
         Row: {
           client_id: string
           created_at: string
+          current_day_index: number | null
           id: string
           is_active: boolean
           plan_type: Database["public"]["Enums"]["plan_type"]
@@ -84,6 +85,7 @@ export type Database = {
         Insert: {
           client_id: string
           created_at?: string
+          current_day_index?: number | null
           id?: string
           is_active?: boolean
           plan_type?: Database["public"]["Enums"]["plan_type"]
@@ -94,6 +96,7 @@ export type Database = {
         Update: {
           client_id?: string
           created_at?: string
+          current_day_index?: number | null
           id?: string
           is_active?: boolean
           plan_type?: Database["public"]["Enums"]["plan_type"]
@@ -151,6 +154,87 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          post_type: string
+          updated_at: string
+          user_id: string
+          workout_session_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          post_type?: string
+          updated_at?: string
+          user_id: string
+          workout_session_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          post_type?: string
+          updated_at?: string
+          user_id?: string
+          workout_session_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -431,6 +515,27 @@ export type Database = {
           },
         ]
       }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       workout_exercises: {
         Row: {
           created_at: string
@@ -472,7 +577,6 @@ export type Database = {
           days_per_week: number | null
           description: string | null
           id: string
-          is_active: boolean | null
           is_public: boolean | null
           name: string
           updated_at: string
@@ -483,7 +587,6 @@ export type Database = {
           days_per_week?: number | null
           description?: string | null
           id?: string
-          is_active?: boolean | null
           is_public?: boolean | null
           name: string
           updated_at?: string
@@ -494,7 +597,6 @@ export type Database = {
           days_per_week?: number | null
           description?: string | null
           id?: string
-          is_active?: boolean | null
           is_public?: boolean | null
           name?: string
           updated_at?: string
@@ -504,7 +606,7 @@ export type Database = {
       }
       workout_sessions: {
         Row: {
-          created_at: string
+          assignment_id: string | null
           end_time: string | null
           id: string
           name: string
@@ -515,7 +617,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string
+          assignment_id?: string | null
           end_time?: string | null
           id?: string
           name: string
@@ -526,7 +628,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          created_at?: string
+          assignment_id?: string | null
           end_time?: string | null
           id?: string
           name?: string
@@ -537,6 +639,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workout_sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "client_routine_assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workout_sessions_routine_day_id_fkey"
             columns: ["routine_day_id"]
