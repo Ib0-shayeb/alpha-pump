@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Play, Clock, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Play, Clock, CheckCircle, Share2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { handleWorkoutCompletion } from "@/lib/workoutCompletion";
+import { ShareWorkoutDialog } from "@/components/ShareWorkoutDialog";
 
 interface WorkoutSet {
   id?: string;
@@ -38,6 +39,8 @@ const ActiveWorkout = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [startTime] = useState(new Date());
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [completedSessionId, setCompletedSessionId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -375,6 +378,19 @@ const ActiveWorkout = () => {
           </Button>
         </div>
       </div>
+
+      {/* Share Workout Dialog */}
+      {showShareDialog && completedSessionId && (
+        <ShareWorkoutDialog
+          isOpen={showShareDialog}
+          onClose={() => {
+            setShowShareDialog(false);
+            navigate('/');
+          }}
+          workoutSessionId={completedSessionId}
+          workoutName={sessionName}
+        />
+      )}
     </Layout>
   );
 };
