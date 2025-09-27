@@ -47,16 +47,6 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
       href: mainHref,
     },
     {
-      label: "Social",
-      icon: Heart,
-      href: "/social",
-    },
-    {
-      label: "Discover",
-      icon: Compass,
-      href: "/discover",
-    },
-    {
       label: "Inbox",
       icon: Bell,
       href: "/inbox",
@@ -146,6 +136,49 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
               </Link>
             )
           ))}
+
+          {/* Social section */}
+          <div className="pt-4 mt-4 border-t border-border">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2 px-3">Social</h3>
+            {([
+              { label: "Social", icon: Heart, href: "/social" } as MenuItem,
+              { label: "Discover", icon: Compass, href: "/discover" } as MenuItem,
+            ] as MenuItem[]).map((item, idx) => (
+              incompleteProfile || !item.href ? (
+                <div
+                  key={item.href || `${item.label}-social-${idx}`}
+                  className="flex items-center justify-between p-3 rounded-lg opacity-50 cursor-not-allowed"
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon size={20} className="text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </Badge>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon size={20} className="text-muted-foreground" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <Badge variant="destructive" className="h-5 w-5 flex items-center justify-center text-xs p-0">
+                      {item.badge > 9 ? "9+" : item.badge}
+                    </Badge>
+                  )}
+                </Link>
+              )
+            ))}
+          </div>
 
           {/* Secondary section: My Trainers and Clients */}
           <div className="pt-4 mt-4 border-t border-border">
