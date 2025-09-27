@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut, User, Users, Settings as SettingsIcon } from "lucide-react";
+import { Menu, X, Bell, Calendar, Plus, Dumbbell, Home, LogOut, User, Users, Settings as SettingsIcon, Heart, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,16 @@ export const HamburgerMenu = ({ unreadCount = 0, incompleteProfile = false }: Ha
       label: "Main",
       icon: Home,
       href: mainHref,
+    },
+    {
+      label: "Social",
+      icon: Heart,
+      href: "/social",
+    },
+    {
+      label: "Discover",
+      icon: Compass,
+      href: "/discover",
     },
     {
       label: "Inbox",
