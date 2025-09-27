@@ -1,5 +1,4 @@
 import { ReactNode, useState, useEffect } from "react";
-import { Navigation } from "./Navigation";
 import { HamburgerMenu } from "./HamburgerMenu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -75,14 +74,9 @@ export const Layout = ({ children, title }: LayoutProps) => {
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6 overflow-auto">
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
             {children}
           </main>
-        </div>
-
-        {/* Mobile Bottom Navigation */}
-        <div className="md:hidden">
-          <Navigation />
         </div>
       </div>
     </SidebarProvider>

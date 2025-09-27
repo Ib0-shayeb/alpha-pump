@@ -2,12 +2,13 @@ import { NavLink, useLocation } from "react-router-dom";
 import { 
   Home, 
   Users, 
-  Search, 
+  Heart,
+  Compass,
   Calendar, 
+  Plus,
   Dumbbell, 
   User, 
-  MessageSquare, 
-  Bot,
+  Bell,
   Settings,
   LogOut 
 } from "lucide-react";
@@ -23,23 +24,35 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Social Feed", url: "/social", icon: Users },
-  { title: "Discover", url: "/discover", icon: Search },
-  { title: "Routines", url: "/routines", icon: Calendar },
-  { title: "AI Trainer", url: "/ai-trainer", icon: Bot },
+  { title: "Main", url: "/", icon: Home },
+  { title: "Inbox", url: "/inbox", icon: Bell, badge: true },
 ];
 
-const profileItems = [
-  { title: "Profile", url: "/profile", icon: User },
-  { title: "Inbox", url: "/inbox", icon: MessageSquare },
-  { title: "Settings", url: "/settings", icon: Settings },
+const socialItems = [
+  { title: "Social", url: "/social", icon: Heart },
+  { title: "Discover", url: "/discover", icon: Compass },
+];
+
+const workoutItems = [
+  { title: "Workout Routines", url: "/routines", icon: Calendar },
+  { title: "Create New Routine", url: "/routines/create", icon: Plus },
+  { title: "Browse Exercises", url: "/exercises", icon: Dumbbell },
+];
+
+const trainerItems = [
+  { title: "Trainer Profile", url: "/trainer/profile/edit", icon: User },
+];
+
+const clientTrainerItems = [
+  { title: "My Trainers", url: "#", icon: Users },
+  { title: "Clients", url: "/trainer", icon: Users },
 ];
 
 export function AppSidebar() {
@@ -48,6 +61,8 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [followerCount, setFollowerCount] = useState(0);
+  const [userRole, setUserRole] = useState<string>('client');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const collapsed = state === "collapsed";
 
@@ -55,6 +70,8 @@ export function AppSidebar() {
     if (user) {
       fetchProfile();
       fetchFollowerCount();
+      fetchUserRole();
+      fetchUnreadCount();
     }
   }, [user]);
 
@@ -77,6 +94,34 @@ export function AppSidebar() {
     setFollowerCount(count || 0);
   };
 
+  const fetchUserRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setUserRole(profile?.role || 'client');
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    
+    setUnreadCount(count || 0);
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -87,7 +132,7 @@ export function AppSidebar() {
     }
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const mainHref = userRole === 'trainer' ? '/trainer' : '/';
 
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
@@ -123,10 +168,10 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
-                      to={item.url}
+                      to={item.title === "Main" ? mainHref : item.url}
                       end
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors relative ${
                           isActive
                             ? "bg-primary/10 text-primary font-medium"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -135,6 +180,14 @@ export function AppSidebar() {
                     >
                       <item.icon className="w-5 h-5" />
                       {!collapsed && <span>{item.title}</span>}
+                      {item.badge && unreadCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="h-5 w-5 flex items-center justify-center text-xs p-0 ml-auto"
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -143,12 +196,12 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Profile & Settings */}
+        {/* Social Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Profile</SidebarGroupLabel>
+          <SidebarGroupLabel>Social</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {profileItems.map((item) => (
+              {socialItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -167,6 +220,124 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Workout Navigation */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Workouts</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {workoutItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                          isActive
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        }`
+                      }
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Trainer Profile (conditional) */}
+        {userRole === 'trainer' && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Trainer</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {trainerItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          }`
+                        }
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Client/Trainer Relations */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Connections</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {clientTrainerItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    {item.url === "#" ? (
+                      <div className="flex items-center gap-3 px-3 py-2 rounded-lg opacity-50 cursor-not-allowed text-muted-foreground">
+                        <item.icon className="w-5 h-5" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </div>
+                    ) : (
+                      <NavLink
+                        to={item.url}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                            isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          }`
+                        }
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Settings */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/settings"
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`
+                    }
+                  >
+                    <Settings className="w-5 h-5" />
+                    {!collapsed && <span>Settings</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
