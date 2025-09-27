@@ -31,19 +31,25 @@ const Discover = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authLoading && user) {
+      fetchUsers();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   const fetchUsers = async () => {
+    if (!user) return;
+    
     try {
       // Fetch all users except current user
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', user?.id || '')
+        .neq('user_id', user.id)
         .limit(20);
 
       if (error) throw error;
@@ -52,7 +58,7 @@ const Discover = () => {
       const { data: follows } = await supabase
         .from('user_follows')
         .select('following_id')
-        .eq('follower_id', user?.id || '');
+        .eq('follower_id', user.id);
 
       const followingIds = follows?.map(f => f.following_id) || [];
 
