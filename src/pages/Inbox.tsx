@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, X, Calendar } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bell, Check, X, Calendar, UserPlus, UserCheck, UserX, MessageCircle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { PlanTypeDialog } from "@/components/PlanTypeDialog";
+import { useNavigate } from "react-router-dom";
 
 interface Notification {
   id: string;
@@ -38,8 +42,26 @@ interface Notification {
   };
 }
 
+interface FriendRequest {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  profiles: {
+    user_id: string;
+    display_name?: string;
+    username?: string;
+    avatar_url?: string;
+    bio?: string;
+  };
+}
+
 export const Inbox = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPlanTypeDialogOpen, setIsPlanTypeDialogOpen] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<{
@@ -48,11 +70,13 @@ export const Inbox = () => {
     routineId: string;
     routineName: string;
   } | null>(null);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchNotifications();
+    if (user) {
+      fetchNotifications();
+      fetchFriendRequests();
+    }
   }, [user]);
 
   const fetchNotifications = async () => {
@@ -336,6 +360,112 @@ export const Inbox = () => {
     }
   };
 
+  const fetchFriendRequests = async () => {
+    if (!user) return;
+
+    try {
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('friend_requests')
+        .select('*')
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (requestsError) throw requestsError;
+
+      if (!requestsData || requestsData.length === 0) {
+        setFriendRequests([]);
+        return;
+      }
+
+      // Get profile data for senders
+      const senderIds = requestsData.map(req => req.sender_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url, bio')
+        .in('user_id', senderIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      const requestsWithProfiles = requestsData.map(request => ({
+        ...request,
+        profiles: profilesData?.find(profile => profile.user_id === request.sender_id) || {
+          user_id: request.sender_id,
+          display_name: null,
+          username: null,
+          avatar_url: null,
+          bio: null
+        }
+      }));
+
+      setFriendRequests(requestsWithProfiles);
+    } catch (error) {
+      console.error('Error fetching friend requests:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load friend requests",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAcceptFriendRequest = async (requestId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Friend request accepted",
+        description: "You are now friends!",
+      });
+
+      // Remove from friend requests list
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept friend request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeclineFriendRequest = async (requestId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'declined' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Friend request declined",
+        description: "The request has been declined",
+      });
+
+      // Remove from friend requests list
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline friend request",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'connection_request':
@@ -354,19 +484,33 @@ export const Inbox = () => {
   return (
     <Layout title="Inbox">
       <div className="space-y-4">
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <Card key={i} className="p-4">
-                <div className="animate-pulse space-y-2">
-                  <div className="h-4 bg-muted rounded w-1/3"></div>
-                  <div className="h-3 bg-muted rounded w-2/3"></div>
-                  <div className="h-8 bg-muted rounded w-1/4"></div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : notifications.length > 0 ? (
+        <Tabs defaultValue="notifications" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Notifications ({notifications.length})
+            </TabsTrigger>
+            <TabsTrigger value="friend-requests" className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              Friend Requests ({friendRequests.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <Card key={i} className="p-4">
+                    <div className="animate-pulse space-y-2">
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                      <div className="h-3 bg-muted rounded w-2/3"></div>
+                      <div className="h-8 bg-muted rounded w-1/4"></div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : notifications.length > 0 ? (
           notifications.map((notification) => {
             const Icon = getNotificationIcon(notification.type);
             
@@ -515,13 +659,74 @@ export const Inbox = () => {
               </Card>
             );
           })
-        ) : (
-          <Card className="p-8 text-center">
-            <Bell size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No notifications</h3>
-            <p className="text-muted-foreground">You're all caught up!</p>
-          </Card>
-        )}
+            ) : (
+              <Card className="p-8 text-center">
+                <Bell size={48} className="mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">No notifications</h3>
+                <p className="text-muted-foreground">You're all caught up!</p>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Friend Requests Tab */}
+          <TabsContent value="friend-requests" className="space-y-4">
+            {friendRequests.length > 0 ? (
+              friendRequests.map((request) => (
+                <Card key={request.id} className="p-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={request.profiles.avatar_url} />
+                      <AvatarFallback>
+                        {request.profiles.display_name?.[0] || request.profiles.username?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-medium">
+                        {request.profiles.display_name || request.profiles.username || 'Anonymous'}
+                      </h4>
+                      {request.profiles.username && request.profiles.display_name && (
+                        <p className="text-sm text-muted-foreground">@{request.profiles.username}</p>
+                      )}
+                      {request.profiles.bio && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {request.profiles.bio}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Sent {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeclineFriendRequest(request.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <UserX className="w-4 h-4 mr-1" />
+                        Decline
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAcceptFriendRequest(request.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <UserCheck className="w-4 h-4" />
+                        Accept
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <UserPlus className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">No friend requests</h3>
+                <p className="text-muted-foreground">When people send you friend requests, they'll appear here.</p>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
         
         <PlanTypeDialog
           open={isPlanTypeDialogOpen}

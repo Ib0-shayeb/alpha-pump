@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { MyScheduleDialog } from "@/components/MyScheduleDialog";
 
 interface Post {
   id: string;
@@ -33,10 +34,22 @@ interface Post {
   post_comments: { id: string; content: string; profiles: { display_name?: string } }[];
 }
 
+interface SelectedWorkout {
+  session_id: string;
+  session_name: string;
+  routine_name: string;
+  routine_day_name: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+}
+
 const Social = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<SelectedWorkout | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -103,23 +116,39 @@ const Social = () => {
     if (!newPost.trim() || !user) return;
 
     try {
+      const postData: any = {
+        user_id: user.id,
+        content: newPost,
+        post_type: selectedWorkout ? 'workout_summary' : 'general'
+      };
+
+      // If a completed workout is selected, link it to the post
+      if (selectedWorkout) {
+        postData.workout_session_id = selectedWorkout.session_id;
+      }
+
       const { error } = await supabase
         .from('posts')
-        .insert({
-          user_id: user.id,
-          content: newPost,
-          post_type: 'general'
-        });
+        .insert(postData);
 
       if (error) throw error;
       
       setNewPost('');
+      setSelectedWorkout(null);
       toast.success('Post created!');
       fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
       toast.error('Failed to create post');
     }
+  };
+
+  const handleWorkoutSelect = (workout: SelectedWorkout) => {
+    setSelectedWorkout(workout);
+  };
+
+  const handleRemoveWorkout = () => {
+    setSelectedWorkout(null);
   };
 
   const toggleLike = async (postId: string, isLiked: boolean) => {
@@ -183,9 +212,13 @@ const Social = () => {
               />
               <div className="flex justify-between items-center">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsScheduleDialogOpen(true)}
+                  >
                     <Dumbbell className="w-4 h-4 mr-2" />
-                    Workout
+                    {selectedWorkout ? 'Change Workout' : 'Add Workout'}
                   </Button>
                 </div>
                 <Button 
@@ -197,6 +230,38 @@ const Social = () => {
                   Post
                 </Button>
               </div>
+
+              {/* Selected Workout Display */}
+              {selectedWorkout && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-full">
+                        <Dumbbell className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-green-800">
+                          {selectedWorkout.session_name}
+                        </h4>
+                        <p className="text-sm text-green-600">
+                          {selectedWorkout.routine_name} • {selectedWorkout.routine_day_name}
+                        </p>
+                        <p className="text-xs text-green-500">
+                          {new Date(selectedWorkout.start_time).toLocaleDateString()} • {selectedWorkout.duration_minutes} min
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveWorkout}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -307,6 +372,13 @@ const Social = () => {
           )}
         </div>
       </div>
+
+      {/* My Schedule Dialog */}
+      <MyScheduleDialog
+        isOpen={isScheduleDialogOpen}
+        onClose={() => setIsScheduleDialogOpen(false)}
+        onSelectWorkout={handleWorkoutSelect}
+      />
     </Layout>
   );
 };

@@ -18,6 +18,11 @@ import { Inbox } from "./pages/Inbox";
 import { TrainerView } from "./pages/TrainerView";
 import { ClientDetails } from "./pages/ClientDetails";
 import { TrainerProfile } from "./components/TrainerProfile";
+import { UserProfile } from "./components/UserProfile";
+import UserProfilePage from "./pages/UserProfilePage";
+import FollowersPage from "./pages/FollowersPage";
+import EditProfilePage from "./pages/EditProfilePage";
+import MessagesPage from "./pages/MessagesPage";
 import { TrainerProfileEdit } from "./pages/TrainerProfileEdit";
 import AITrainer from "./pages/AITrainer";
 import { WorkoutSessionDetails } from "./pages/WorkoutSessionDetails";
@@ -51,11 +56,16 @@ const AppContent = () => {
         <Route path="/ai-trainer" element={<AuthWrapper><AITrainer /></AuthWrapper>} />
         <Route path="/trainer/profile/edit" element={<AuthWrapper><TrainerProfileEdit /></AuthWrapper>} />
         <Route path="/trainer/:trainerId" element={<AuthWrapper><TrainerProfile /></AuthWrapper>} />
+        <Route path="/profile" element={<AuthWrapper><UserProfilePage /></AuthWrapper>} />
+        <Route path="/profile/edit" element={<AuthWrapper><EditProfilePage /></AuthWrapper>} />
+        <Route path="/profile/followers" element={<AuthWrapper><FollowersPage /></AuthWrapper>} />
+        <Route path="/profile/:userId" element={<AuthWrapper><UserProfile /></AuthWrapper>} />
+        <Route path="/messages" element={<AuthWrapper><MessagesPage /></AuthWrapper>} />
+        <Route path="/messages/:userId" element={<AuthWrapper><MessagesPage /></AuthWrapper>} />
         <Route path="/trainer/client/:clientId" element={<AuthWrapper><ClientDetails /></AuthWrapper>} />
         <Route path="/workout-session/:sessionId" element={<AuthWrapper><WorkoutSessionDetails /></AuthWrapper>} />
         <Route path="/routine/:routineId/day/:dayId" element={<AuthWrapper><RoutineDetails /></AuthWrapper>} />
         <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
-        <Route path="/profile" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -9,6 +9,7 @@ import {
   Dumbbell, 
   User, 
   Bell,
+  MessageCircle,
   Settings,
   LogOut 
 } from "lucide-react";
@@ -32,6 +33,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 const mainItems = [
   { title: "Main", url: "/", icon: Home },
+  { title: "Profile", url: "/profile", icon: User },
+  { title: "Messages", url: "/messages", icon: MessageCircle },
   { title: "Inbox", url: "/inbox", icon: Bell, badge: true },
 ];
 
