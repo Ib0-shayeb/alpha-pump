@@ -31,7 +31,7 @@ interface Post {
     end_time?: string;
   };
   post_likes: { id: string; user_id: string }[];
-  post_comments: { id: string; content: string; profiles: { display_name?: string } }[];
+  post_comments: { id: string; content: string; user_id: string; created_at: string; profiles: { display_name?: string; avatar_url?: string } }[];
 }
 
 interface SelectedWorkout {
@@ -50,6 +50,8 @@ const Social = () => {
   const [loading, setLoading] = useState(true);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<SelectedWorkout | null>(null);
+  const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
+  const [showComments, setShowComments] = useState<{ [key: string]: boolean }>({});
   const { user } = useAuth();
 
   useEffect(() => {
@@ -82,12 +84,12 @@ const Social = () => {
             (commentsResult.data || []).map(async (comment) => {
               const { data: commentProfile } = await supabase
                 .from('profiles')
-                .select('display_name')
+                .select('display_name, avatar_url')
                 .eq('user_id', comment.user_id)
                 .single();
               return {
                 ...comment,
-                profiles: commentProfile || { display_name: 'Anonymous' }
+                profiles: commentProfile || { display_name: 'Anonymous', avatar_url: null }
               };
             })
           );
@@ -171,6 +173,31 @@ const Social = () => {
       console.error('Error toggling like:', error);
       toast.error('Failed to update like');
     }
+  };
+
+  const addComment = async (postId: string) => {
+    if (!user || !commentInputs[postId]?.trim()) return;
+
+    try {
+      await supabase
+        .from('post_comments')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: commentInputs[postId].trim()
+        });
+
+      setCommentInputs({ ...commentInputs, [postId]: '' });
+      toast.success('Comment added!');
+      fetchPosts();
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
+    }
+  };
+
+  const toggleComments = (postId: string) => {
+    setShowComments({ ...showComments, [postId]: !showComments[postId] });
   };
 
   const formatWorkoutDuration = (start: string, end?: string) => {
@@ -342,7 +369,12 @@ const Social = () => {
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                     {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2 text-muted-foreground"
+                    onClick={() => toggleComments(post.id)}
+                  >
                     <MessageCircle className="w-4 h-4" />
                     {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
                   </Button>
@@ -351,6 +383,60 @@ const Social = () => {
                     Share
                   </Button>
                 </div>
+
+                {/* Comments Section */}
+                {showComments[post.id] && (
+                  <div className="mt-4 space-y-4">
+                    {/* Add Comment */}
+                    <div className="flex gap-2">
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback><Users className="w-4 h-4" /></AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Add a comment..."
+                          value={commentInputs[post.id] || ''}
+                          onChange={(e) => setCommentInputs({ ...commentInputs, [post.id]: e.target.value })}
+                          onKeyDown={(e) => e.key === 'Enter' && addComment(post.id)}
+                          className="flex-1 px-3 py-2 text-sm bg-background border border-border/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                        <Button 
+                          size="sm"
+                          onClick={() => addComment(post.id)}
+                          disabled={!commentInputs[post.id]?.trim()}
+                        >
+                          Post
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Comments List */}
+                    {post.post_comments.length > 0 && (
+                      <div className="space-y-3">
+                        {post.post_comments.map((comment) => (
+                          <div key={comment.id} className="flex gap-2">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={comment.profiles.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {comment.profiles.display_name?.[0] || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="bg-background/50 px-3 py-2 rounded-lg">
+                                <p className="font-semibold text-sm">{comment.profiles.display_name || 'Anonymous'}</p>
+                                <p className="text-sm">{comment.content}</p>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-3">
+                                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
             );
           })}
