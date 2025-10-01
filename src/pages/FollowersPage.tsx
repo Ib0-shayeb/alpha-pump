@@ -42,13 +42,16 @@ const FollowersPage = () => {
   const [activeTab, setActiveTab] = useState("followers");
 
   useEffect(() => {
-    if (user) {
-      setLoading(true);
-      fetchFollowers();
-      fetchFollowing();
-    } else {
-      setLoading(false);
-    }
+    const loadData = async () => {
+      if (user) {
+        setLoading(true);
+        await Promise.all([fetchFollowers(), fetchFollowing()]);
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, [user]);
 
   const fetchFollowers = async () => {
