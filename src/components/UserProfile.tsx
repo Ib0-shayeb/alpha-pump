@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,24 @@ interface UserProfileData {
   height?: number;
   weight?: number;
   isFollowing?: boolean;
+  isFriend?: boolean;
+  followsYou?: boolean;
+  friendRequestStatus?: 'none' | 'sent' | 'received' | 'pending';
   followerCount?: number;
   followingCount?: number;
+  friendCount?: number;
 }
 
 export const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Get the previous location from state, or default to discover
+  const previousLocation = location.state?.from || '/discover';
 
   useEffect(() => {
     if (userId) {
@@ -55,20 +63,65 @@ export const UserProfile = () => {
 
       if (error) throw error;
 
-      // Get follow status for current user
+      // Get relationship status for current user
       let isFollowing = false;
+      let isFriend = false;
+      let followsYou = false;
+      let friendRequestStatus: 'none' | 'sent' | 'received' | 'pending' = 'none';
+      
       if (user && user.id !== userId) {
+        // Check if user follows them
         const { data: followData } = await supabase
           .from('user_follows')
           .select('id')
           .eq('follower_id', user.id)
           .eq('following_id', userId)
-          .single();
+          .maybeSingle();
         isFollowing = !!followData;
+
+        // Check if they follow user
+        const { data: followerData } = await supabase
+          .from('user_follows')
+          .select('id')
+          .eq('follower_id', userId)
+          .eq('following_id', user.id)
+          .maybeSingle();
+        followsYou = !!followerData;
+
+        // Check if they are friends
+        const { data: friendData } = await supabase
+          .from('friends')
+          .select('id')
+          .or(`and(user1_id.eq.${user.id},user2_id.eq.${userId}),and(user1_id.eq.${userId},user2_id.eq.${user.id})`)
+          .maybeSingle();
+        isFriend = !!friendData;
+
+        // Check friend request status
+        if (!isFriend) {
+          const { data: sentRequest } = await supabase
+            .from('friend_requests')
+            .select('status')
+            .eq('sender_id', user.id)
+            .eq('receiver_id', userId)
+            .maybeSingle();
+
+          const { data: receivedRequest } = await supabase
+            .from('friend_requests')
+            .select('status')
+            .eq('sender_id', userId)
+            .eq('receiver_id', user.id)
+            .maybeSingle();
+
+          if (sentRequest) {
+            friendRequestStatus = sentRequest.status === 'pending' ? 'sent' : 'none';
+          } else if (receivedRequest) {
+            friendRequestStatus = receivedRequest.status === 'pending' ? 'received' : 'none';
+          }
+        }
       }
 
-      // Get follower/following counts
-      const [{ count: followerCount }, { count: followingCount }] = await Promise.all([
+      // Get follower/following/friends counts
+      const [{ count: followerCount }, { count: followingCount }, { count: friendCount }] = await Promise.all([
         supabase
           .from('user_follows')
           .select('id', { count: 'exact', head: true })
@@ -76,19 +129,27 @@ export const UserProfile = () => {
         supabase
           .from('user_follows')
           .select('id', { count: 'exact', head: true })
-          .eq('follower_id', userId)
+          .eq('follower_id', userId),
+        supabase
+          .from('friends')
+          .select('id', { count: 'exact', head: true })
+          .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
       ]);
 
       setProfile({
         ...data,
         isFollowing,
+        isFriend,
+        followsYou,
+        friendRequestStatus,
         followerCount: followerCount || 0,
-        followingCount: followingCount || 0
+        followingCount: followingCount || 0,
+        friendCount: friendCount || 0
       });
     } catch (error) {
       console.error('Error fetching user profile:', error);
       toast.error('Failed to load user profile');
-      navigate('/discover');
+      navigate(previousLocation);
     } finally {
       setLoading(false);
     }
@@ -123,6 +184,112 @@ export const UserProfile = () => {
     }
   };
 
+  const sendFriendRequest = async () => {
+    if (!user || !profile || user.id === profile.user_id) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: profile.user_id,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      toast.success('Friend request sent!');
+      // Refresh profile to update status
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast.error('Failed to send friend request');
+    }
+  };
+
+  const cancelFriendRequest = async () => {
+    if (!user || !profile || user.id === profile.user_id) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('sender_id', user.id)
+        .eq('receiver_id', profile.user_id);
+
+      if (error) throw error;
+
+      toast.success('Friend request cancelled');
+      // Refresh profile to update status
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error cancelling friend request:', error);
+      toast.error('Failed to cancel friend request');
+    }
+  };
+
+  const acceptFriendRequest = async () => {
+    if (!user || !profile || user.id === profile.user_id) return;
+
+    try {
+      // Update the friend request status to accepted
+      const { error: updateError } = await supabase
+        .from('friend_requests')
+        .update({ status: 'accepted' })
+        .eq('sender_id', profile.user_id)
+        .eq('receiver_id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success('Friend request accepted!');
+      // Refresh profile to update status
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      toast.error('Failed to accept friend request');
+    }
+  };
+
+  const declineFriendRequest = async () => {
+    if (!user || !profile || user.id === profile.user_id) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .update({ status: 'declined' })
+        .eq('sender_id', profile.user_id)
+        .eq('receiver_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Friend request declined');
+      // Refresh profile to update status
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      toast.error('Failed to decline friend request');
+    }
+  };
+
+  const unfriend = async () => {
+    if (!user || !profile || user.id === profile.user_id) return;
+
+    try {
+      // Delete the single friendship row
+      await supabase
+        .from('friends')
+        .delete()
+        .or(`and(user1_id.eq.${user.id},user2_id.eq.${profile.user_id}),and(user1_id.eq.${profile.user_id},user2_id.eq.${user.id})`);
+      
+      toast.success('Unfriended user');
+      // Refresh profile to update status
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error unfriending:', error);
+      toast.error('Failed to unfriend');
+    }
+  };
+
   if (loading) {
     return (
       <Layout title="Loading Profile...">
@@ -141,9 +308,9 @@ export const UserProfile = () => {
         <Card className="p-8 text-center">
           <h2 className="text-xl font-semibold mb-4">Profile not found</h2>
           <p className="text-muted-foreground mb-4">The user profile you're looking for doesn't exist.</p>
-          <Button onClick={() => navigate('/discover')}>
+          <Button onClick={() => navigate(previousLocation)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Discover
+            Back
           </Button>
         </Card>
       </Layout>
@@ -156,11 +323,11 @@ export const UserProfile = () => {
         {/* Back Button */}
         <Button
           variant="ghost"
-          onClick={() => navigate('/discover')}
+          onClick={() => navigate(previousLocation)}
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Discover
+          Back
         </Button>
 
         {/* Profile Header */}
@@ -206,28 +373,118 @@ export const UserProfile = () => {
                   <div className="font-semibold text-lg">{profile.followingCount}</div>
                   <div className="text-muted-foreground">Following</div>
                 </div>
+                <div className="text-center">
+                  <div className="font-semibold text-lg">{profile.friendCount}</div>
+                  <div className="text-muted-foreground">Friends</div>
+                </div>
               </div>
+
+              {/* Relationship Status Badges */}
+              {user && user.id !== profile.user_id && (
+                <div className="flex justify-center md:justify-start gap-2 mt-3">
+                  {profile.isFriend && (
+                    <Badge variant="secondary" className="bg-pink-100 text-pink-700">
+                      <Heart className="w-3 h-3 mr-1" />
+                      Friend
+                    </Badge>
+                  )}
+                  {profile.friendRequestStatus === 'sent' && (
+                    <Badge variant="outline" className="border-yellow-200 text-yellow-700">
+                      Friend request sent
+                    </Badge>
+                  )}
+                  {profile.friendRequestStatus === 'received' && (
+                    <Badge variant="outline" className="border-orange-200 text-orange-700">
+                      Friend request received
+                    </Badge>
+                  )}
+                  {profile.followsYou && (
+                    <Badge variant="outline" className="border-blue-200 text-blue-700">
+                      Follows you
+                    </Badge>
+                  )}
+                  {profile.isFollowing && (
+                    <Badge variant="outline" className="border-green-200 text-green-700">
+                      You follow
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Follow Button */}
+            {/* Action Buttons */}
             {user && user.id !== profile.user_id && (
-              <Button
-                onClick={toggleFollow}
-                variant={profile.isFollowing ? "outline" : "default"}
-                size="lg"
-              >
-                {profile.isFollowing ? (
-                  <>
-                    <Users className="w-4 h-4 mr-2" />
-                    Following
-                  </>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={toggleFollow}
+                  variant={profile.isFollowing ? "outline" : "default"}
+                  size="lg"
+                >
+                  {profile.isFollowing ? (
+                    <>
+                      <Users className="w-4 h-4 mr-2" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+                
+                {/* Friend Request Actions */}
+                {profile.isFriend ? (
+                  <Button
+                    onClick={unfriend}
+                    variant="outline"
+                    size="lg"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Unfriend
+                  </Button>
+                ) : profile.friendRequestStatus === 'sent' ? (
+                  <Button
+                    onClick={cancelFriendRequest}
+                    variant="outline"
+                    size="lg"
+                    className="text-yellow-600 hover:text-yellow-700"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Cancel Request
+                  </Button>
+                ) : profile.friendRequestStatus === 'received' ? (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={acceptFriendRequest}
+                      variant="default"
+                      size="lg"
+                      className="flex-1"
+                    >
+                      <Heart className="w-4 h-4 mr-2" />
+                      Accept
+                    </Button>
+                    <Button
+                      onClick={declineFriendRequest}
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 text-red-600 hover:text-red-700"
+                    >
+                      Decline
+                    </Button>
+                  </div>
                 ) : (
-                  <>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Follow
-                  </>
+                  <Button
+                    onClick={sendFriendRequest}
+                    variant="secondary"
+                    size="lg"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Send Friend Request
+                  </Button>
                 )}
-              </Button>
+              </div>
             )}
           </div>
         </Card>

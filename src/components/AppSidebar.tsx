@@ -116,13 +116,22 @@ export function AppSidebar() {
   const fetchUnreadCount = async () => {
     if (!user) return;
     
-    const { count } = await supabase
+    // Get unread notifications count
+    const { count: notificationsCount } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('read', false);
     
-    setUnreadCount(count || 0);
+    // Get pending friend requests count
+    const { count: friendRequestsCount } = await supabase
+      .from('friend_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .eq('status', 'pending');
+    
+    const totalUnread = (notificationsCount || 0) + (friendRequestsCount || 0);
+    setUnreadCount(totalUnread);
   };
 
   const handleSignOut = async () => {

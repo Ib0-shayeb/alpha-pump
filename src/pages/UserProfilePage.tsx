@@ -44,6 +44,7 @@ interface UserProfile {
   weight?: number;
   followerCount?: number;
   followingCount?: number;
+  friendCount?: number;
   created_at: string;
 }
 
@@ -139,8 +140,8 @@ const UserProfilePage = () => {
 
       console.log('Profile data:', data);
 
-      // Get follower/following counts
-      const [{ count: followerCount }, { count: followingCount }] = await Promise.all([
+      // Get follower/following/friends counts
+      const [{ count: followerCount }, { count: followingCount }, { count: friendCount }] = await Promise.all([
         supabase
           .from('user_follows')
           .select('id', { count: 'exact', head: true })
@@ -148,7 +149,11 @@ const UserProfilePage = () => {
         supabase
           .from('user_follows')
           .select('id', { count: 'exact', head: true })
-          .eq('follower_id', user.id)
+          .eq('follower_id', user.id),
+        supabase
+          .from('friends')
+          .select('id', { count: 'exact', head: true })
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
       ]);
 
       console.log('Follower counts:', { followerCount, followingCount });
@@ -156,7 +161,8 @@ const UserProfilePage = () => {
       setProfile({
         ...data,
         followerCount: followerCount || 0,
-        followingCount: followingCount || 0
+        followingCount: followingCount || 0,
+        friendCount: friendCount || 0
       });
 
       setLoading(false);
@@ -435,6 +441,13 @@ const UserProfilePage = () => {
                 >
                   <div className="font-semibold text-lg">{profile.followingCount}</div>
                   <div className="text-muted-foreground">Following</div>
+                </div>
+                <div 
+                  className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => navigate('/profile/followers')}
+                >
+                  <div className="font-semibold text-lg">{profile.friendCount}</div>
+                  <div className="text-muted-foreground">Friends</div>
                 </div>
                 <div className="text-center">
                   <div className="font-semibold text-lg">{posts.length}</div>

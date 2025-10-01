@@ -36,6 +36,7 @@ const Dashboard = () => {
   const [recentPosts, setRecentPosts] = useState<any[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [followingCount, setFollowingCount] = useState(0);
+  const [friendCount, setFriendCount] = useState(0);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -151,12 +152,19 @@ const Dashboard = () => {
   const fetchSocialStats = async () => {
     if (!user) return;
     try {
-      const { count } = await supabase
-        .from('user_follows')
-        .select('id', { count: 'exact', head: true })
-        .eq('follower_id', user.id);
+      const [{ count: followingCount }, { count: friendCount }] = await Promise.all([
+        supabase
+          .from('user_follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('follower_id', user.id),
+        supabase
+          .from('friends')
+          .select('id', { count: 'exact', head: true })
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+      ]);
       
-      setFollowingCount(count || 0);
+      setFollowingCount(followingCount || 0);
+      setFriendCount(friendCount || 0);
     } catch (error) {
       console.error('Error fetching social stats:', error);
     }
@@ -201,6 +209,7 @@ const Dashboard = () => {
     { label: "Workouts This Week", value: String(workoutsThisWeek), icon: Dumbbell, color: "text-primary" },
     { label: "Total Workouts", value: String(totalWorkouts), icon: Trophy, color: "text-accent" },
     { label: "Following", value: String(followingCount), icon: Users, color: "text-blue-500" },
+    { label: "Friends", value: String(friendCount), icon: Heart, color: "text-pink-500" },
   ];
 
   return (

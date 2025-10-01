@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Check, X, Calendar, UserPlus, UserCheck, UserX, MessageCircle } from "lucide-react";
+import { Bell, Check, X, Calendar, UserPlus, UserCheck, UserX, MessageCircle, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { PlanTypeDialog } from "@/components/PlanTypeDialog";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface Notification {
   id: string;
@@ -60,6 +60,7 @@ interface FriendRequest {
 export const Inbox = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -365,7 +366,7 @@ export const Inbox = () => {
 
     try {
       const { data: requestsData, error: requestsError } = await supabase
-        .from('friend_requests' as any)
+        .from('friend_requests')
         .select('*')
         .eq('receiver_id', user.id)
         .eq('status', 'pending')
@@ -379,27 +380,81 @@ export const Inbox = () => {
       }
 
       // Get profile data for senders
-      const senderIds = (requestsData as any[]).map((req: any) => req.sender_id);
+      const senderIds = requestsData.map(req => req.sender_id);
+      console.log('Sender IDs:', senderIds);
+      console.log('Full sender IDs with length:', senderIds.map(id => ({ id, length: id.length })));
+      
+      // Try to fetch profiles with a simpler approach that should work with RLS
+      console.log('Trying simple profile fetch...');
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name, username, avatar_url, bio')
         .in('user_id', senderIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        console.log('Profile error details:', profilesError);
+        
+        // If profiles query fails, let's try to get basic user info from auth
+        console.log('Trying to get basic user info...');
+        const requestsWithBasicInfo = requestsData.map((request) => {
+          return {
+            ...request,
+            profiles: {
+              user_id: request.sender_id,
+              display_name: `User ${request.sender_id.slice(0, 8)}`,
+              username: null,
+              avatar_url: null,
+              bio: null
+            }
+          };
+        });
+        
+        setFriendRequests(requestsWithBasicInfo);
+        return;
+      }
+
+      console.log('Profiles data:', profilesData);
+      console.log('Number of profiles found:', profilesData?.length || 0);
+
+      // If no profiles found, check if it's a permissions issue
+      if (!profilesData || profilesData.length === 0) {
+        console.log('No profiles found. This might be a permissions issue.');
+        console.log('Current user ID:', user.id);
+        console.log('Sender IDs we tried to fetch:', senderIds);
+        
+        // Try to fetch just one profile to test permissions
+        if (senderIds.length > 0) {
+          console.log('Testing permissions with single profile fetch...');
+          const { data: testProfile, error: testError } = await supabase
+            .from('profiles')
+            .select('user_id, display_name, username')
+            .eq('user_id', senderIds[0])
+            .single();
+          
+          console.log('Test profile result:', testProfile);
+          console.log('Test profile error:', testError);
+        }
+      }
 
       // Combine the data
-      const requestsWithProfiles = (requestsData as any[]).map((request: any) => ({
-        ...request,
-        profiles: profilesData?.find(profile => profile.user_id === request.sender_id) || {
-          user_id: request.sender_id,
-          display_name: null,
-          username: null,
-          avatar_url: null,
-          bio: null
-        }
-      }));
+      const requestsWithProfiles = requestsData.map((request) => {
+        const profile = profilesData?.find(profile => profile.user_id === request.sender_id);
+        console.log(`Request ${request.id} - sender_id: ${request.sender_id}, found profile:`, profile);
+        
+        return {
+          ...request,
+          profiles: profile || {
+            user_id: request.sender_id,
+            display_name: `User ${request.sender_id.slice(0, 8)}`,
+            username: null,
+            avatar_url: null,
+            bio: null
+          }
+        };
+      });
 
-      setFriendRequests(requestsWithProfiles as any);
+      setFriendRequests(requestsWithProfiles);
     } catch (error) {
       console.error('Error fetching friend requests:', error);
       toast({
@@ -415,7 +470,7 @@ export const Inbox = () => {
 
     try {
       const { error } = await supabase
-        .from('friend_requests' as any)
+        .from('friend_requests')
         .update({ status: 'accepted' })
         .eq('id', requestId);
 
@@ -443,7 +498,7 @@ export const Inbox = () => {
 
     try {
       const { error } = await supabase
-        .from('friend_requests' as any)
+        .from('friend_requests')
         .update({ status: 'declined' })
         .eq('id', requestId);
 
@@ -677,15 +732,22 @@ export const Inbox = () => {
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={request.profiles.avatar_url} />
                       <AvatarFallback>
-                        {request.profiles.display_name?.[0] || request.profiles.username?.[0] || 'U'}
+                        {request.profiles.display_name?.[0]?.toUpperCase() || 
+                         request.profiles.username?.[0]?.toUpperCase() || 
+                         request.sender_id?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <h4 className="font-medium">
-                        {request.profiles.display_name || request.profiles.username || 'Anonymous'}
+                        {request.profiles.display_name || request.profiles.username || `User ${request.sender_id.slice(0, 8)}`}
                       </h4>
                       {request.profiles.username && request.profiles.display_name && (
                         <p className="text-sm text-muted-foreground">@{request.profiles.username}</p>
+                      )}
+                      {!request.profiles.display_name && !request.profiles.username && (
+                        <p className="text-sm text-muted-foreground text-orange-600">
+                          Profile not found - User may not have completed setup
+                        </p>
                       )}
                       {request.profiles.bio && (
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -697,6 +759,15 @@ export const Inbox = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/profile/${request.sender_id}`, { state: { from: location.pathname } })}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Profile
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

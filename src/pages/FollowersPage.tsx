@@ -11,13 +11,14 @@ import {
   UserMinus,
   MessageCircle,
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  Heart
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface Follower {
   id: string;
@@ -33,11 +34,34 @@ interface Follower {
   };
 }
 
+interface Friend {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  created_at: string;
+  profiles: {
+    user_id: string;
+    display_name?: string;
+    username?: string;
+    avatar_url?: string;
+    bio?: string;
+  };
+}
+
+interface UserStatus {
+  isFriend: boolean;
+  followsYou: boolean;
+  youFollow: boolean;
+  friendRequestStatus: 'none' | 'sent' | 'received' | 'pending';
+}
+
 const FollowersPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [following, setFollowing] = useState<Follower[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("followers");
 
@@ -45,7 +69,7 @@ const FollowersPage = () => {
     const loadData = async () => {
       if (user) {
         setLoading(true);
-        await Promise.all([fetchFollowers(), fetchFollowing()]);
+        await Promise.all([fetchFollowers(), fetchFollowing(), fetchFriends()]);
         setLoading(false);
       } else {
         setLoading(false);
@@ -148,6 +172,61 @@ const FollowersPage = () => {
     }
   };
 
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    try {
+      // Get friends where user is either user1_id or user2_id (single row per friendship)
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('friends')
+        .select('id, user1_id, user2_id, created_at')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (friendsError) throw friendsError;
+
+      if (!friendsData || friendsData.length === 0) {
+        setFriends([]);
+        return;
+      }
+
+      // Get the friend IDs (the other user in each friendship)
+      const friendIds = friendsData.map(friend => 
+        friend.user1_id === user.id ? friend.user2_id : friend.user1_id
+      );
+
+      console.log('Friend IDs:', friendIds);
+
+      // Get profile data for friends
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, username, avatar_url, bio')
+        .in('user_id', friendIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      const friendsWithProfiles = friendsData.map(friend => {
+        const friendId = friend.user1_id === user.id ? friend.user2_id : friend.user1_id;
+        return {
+          ...friend,
+          profiles: profilesData?.find(profile => profile.user_id === friendId) || {
+            user_id: friendId,
+            display_name: null,
+            username: null,
+            avatar_url: null,
+            bio: null
+          }
+        };
+      });
+
+      setFriends(friendsWithProfiles);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+      toast.error('Failed to load friends');
+    }
+  };
+
   const handleUnfollow = async (followingId: string) => {
     if (!user) return;
 
@@ -189,9 +268,143 @@ const FollowersPage = () => {
     }
   };
 
-  const renderUserCard = (userData: Follower, isFollowing: boolean) => {
+  const handleUnfriend = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      // Delete the single friendship row (user1_id < user2_id for consistency)
+      const { error } = await supabase
+        .from('friends')
+        .delete()
+        .or(`and(user1_id.eq.${user.id},user2_id.eq.${friendId}),and(user1_id.eq.${friendId},user2_id.eq.${user.id})`);
+
+      if (error) throw error;
+
+      toast.success('Unfriended successfully');
+      fetchFriends(); // Refresh the list
+    } catch (error) {
+      console.error('Error unfriending:', error);
+      toast.error('Failed to unfriend');
+    }
+  };
+
+  const checkUserStatus = async (userId: string): Promise<UserStatus> => {
+    if (!user || userId === user.id) {
+      return { isFriend: false, followsYou: false, youFollow: false, friendRequestStatus: 'none' };
+    }
+
+    try {
+      // Check if they are friends
+      const { data: friendData } = await supabase
+        .from('friends')
+        .select('id')
+        .or(`and(user1_id.eq.${user.id},user2_id.eq.${userId}),and(user1_id.eq.${userId},user2_id.eq.${user.id})`)
+        .maybeSingle();
+
+      // Check if user follows them
+      const { data: followingData } = await supabase
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', userId)
+        .maybeSingle();
+
+      // Check if they follow user
+      const { data: followerData } = await supabase
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', userId)
+        .eq('following_id', user.id)
+        .maybeSingle();
+
+      // Check friend request status
+      let friendRequestStatus: 'none' | 'sent' | 'received' | 'pending' = 'none';
+      if (!friendData) {
+        const { data: sentRequest } = await supabase
+          .from('friend_requests')
+          .select('status')
+          .eq('sender_id', user.id)
+          .eq('receiver_id', userId)
+          .maybeSingle();
+
+        const { data: receivedRequest } = await supabase
+          .from('friend_requests')
+          .select('status')
+          .eq('sender_id', userId)
+          .eq('receiver_id', user.id)
+          .maybeSingle();
+
+        if (sentRequest) {
+          friendRequestStatus = sentRequest.status === 'pending' ? 'sent' : 'none';
+        } else if (receivedRequest) {
+          friendRequestStatus = receivedRequest.status === 'pending' ? 'received' : 'none';
+        }
+      }
+
+      return {
+        isFriend: !!friendData,
+        followsYou: !!followerData,
+        youFollow: !!followingData,
+        friendRequestStatus
+      };
+    } catch (error) {
+      console.error('Error checking user status:', error);
+      return { isFriend: false, followsYou: false, youFollow: false, friendRequestStatus: 'none' };
+    }
+  };
+
+  const UserStatusBadges = ({ userId }: { userId: string }) => {
+    const [status, setStatus] = useState<UserStatus>({ isFriend: false, followsYou: false, youFollow: false, friendRequestStatus: 'none' });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const loadStatus = async () => {
+        const userStatus = await checkUserStatus(userId);
+        setStatus(userStatus);
+        setLoading(false);
+      };
+      loadStatus();
+    }, [userId]);
+
+    if (loading) return <div className="text-xs text-muted-foreground">Loading...</div>;
+
+    return (
+      <div className="flex gap-1 flex-wrap">
+        {status.isFriend && (
+          <Badge variant="secondary" className="text-xs bg-pink-100 text-pink-700">
+            <Heart className="w-3 h-3 mr-1" />
+            Friend
+          </Badge>
+        )}
+        {status.friendRequestStatus === 'sent' && (
+          <Badge variant="outline" className="text-xs border-yellow-200 text-yellow-700">
+            Friend request sent
+          </Badge>
+        )}
+        {status.friendRequestStatus === 'received' && (
+          <Badge variant="outline" className="text-xs border-orange-200 text-orange-700">
+            Friend request received
+          </Badge>
+        )}
+        {status.followsYou && (
+          <Badge variant="outline" className="text-xs border-blue-200 text-blue-700">
+            Follows you
+          </Badge>
+        )}
+        {status.youFollow && (
+          <Badge variant="outline" className="text-xs border-green-200 text-green-700">
+            You follow
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
+  const renderUserCard = (userData: Follower | Friend, isFollowing: boolean, isFriend: boolean = false) => {
     const profile = userData.profiles;
-    const userId = isFollowing ? userData.following_id : userData.follower_id;
+    const userId = isFollowing ? (userData as Follower).following_id : 
+                   isFriend ? ((userData as Friend).user1_id === user?.id ? (userData as Friend).user2_id : (userData as Friend).user1_id) :
+                   (userData as Follower).follower_id;
     const isCurrentUser = userId === user?.id;
 
     return (
@@ -218,9 +431,12 @@ const FollowersPage = () => {
                   {profile.bio}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {isFollowing ? 'Following since' : 'Followed you'} {formatDistanceToNow(new Date(userData.created_at), { addSuffix: true })}
-              </p>
+              <div className="mt-1 space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {isFriend ? 'Friends since' : isFollowing ? 'Following since' : 'Followed you'} {formatDistanceToNow(new Date(userData.created_at), { addSuffix: true })}
+                </p>
+                <UserStatusBadges userId={userId} />
+              </div>
             </div>
           </div>
           
@@ -230,12 +446,22 @@ const FollowersPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/profile/${userId}`)}
+                  onClick={() => navigate(`/profile/${userId}`, { state: { from: location.pathname } })}
                 >
                   <MessageCircle className="w-4 h-4 mr-1" />
                   View Profile
                 </Button>
-                {isFollowing ? (
+                {isFriend ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUnfriend(userId)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <UserMinus className="w-4 h-4 mr-1" />
+                    Unfriend
+                  </Button>
+                ) : isFollowing ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -296,7 +522,7 @@ const FollowersPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="followers" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Followers ({followers.length})
@@ -304,6 +530,10 @@ const FollowersPage = () => {
             <TabsTrigger value="following" className="flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               Following ({following.length})
+            </TabsTrigger>
+            <TabsTrigger value="friends" className="flex items-center gap-2">
+              <Heart className="w-4 h-4" />
+              Friends ({friends.length})
             </TabsTrigger>
           </TabsList>
 
@@ -325,7 +555,7 @@ const FollowersPage = () => {
                     </p>
                   </div>
                 ) : (
-                  followers.map((follower) => renderUserCard(follower, false))
+                  followers.map((follower) => renderUserCard(follower, false, false))
                 )}
               </CardContent>
             </Card>
@@ -349,7 +579,31 @@ const FollowersPage = () => {
                     </p>
                   </div>
                 ) : (
-                  following.map((follow) => renderUserCard(follow, true))
+                  following.map((follow) => renderUserCard(follow, true, false))
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="friends" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  Your Friends
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {friends.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Heart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">No friends yet</h3>
+                    <p className="text-muted-foreground">
+                      Connect with other users to build your fitness community!
+                    </p>
+                  </div>
+                ) : (
+                  friends.map((friend) => renderUserCard(friend, false, true))
                 )}
               </CardContent>
             </Card>
