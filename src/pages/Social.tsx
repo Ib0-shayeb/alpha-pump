@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { MyScheduleDialog } from "@/components/MyScheduleDialog";
+import { CommentThread } from "@/components/CommentThread";
 
 interface Post {
   id: string;
@@ -31,7 +32,7 @@ interface Post {
     end_time?: string;
   };
   post_likes: { id: string; user_id: string }[];
-  post_comments: { id: string; content: string; user_id: string; created_at: string; profiles: { display_name?: string; avatar_url?: string } }[];
+  post_comments: { id: string; content: string; user_id: string; created_at: string; parent_comment_id?: string; profiles: { display_name?: string; avatar_url?: string }; replies?: any[] }[];
 }
 
 interface SelectedWorkout {
@@ -80,7 +81,8 @@ const Social = () => {
               : Promise.resolve({ data: null })
           ]);
 
-          const comments = await Promise.all(
+          // Fetch all comments for this post
+          const allComments = await Promise.all(
             (commentsResult.data || []).map(async (comment) => {
               const { data: commentProfile } = await supabase
                 .from('profiles')
@@ -93,6 +95,18 @@ const Social = () => {
               };
             })
           );
+
+          // Build nested comment structure
+          const buildCommentTree = (comments: any[], parentId: string | null = null): any[] => {
+            return comments
+              .filter(comment => comment.parent_comment_id === parentId)
+              .map(comment => ({
+                ...comment,
+                replies: buildCommentTree(comments, comment.id)
+              }));
+          };
+
+          const comments = buildCommentTree(allComments, null);
 
           return {
             ...post,
@@ -175,7 +189,7 @@ const Social = () => {
     }
   };
 
-  const addComment = async (postId: string) => {
+  const addComment = async (postId: string, parentCommentId?: string) => {
     if (!user || !commentInputs[postId]?.trim()) return;
 
     try {
@@ -184,16 +198,53 @@ const Social = () => {
         .insert({
           post_id: postId,
           user_id: user.id,
-          content: commentInputs[postId].trim()
+          content: commentInputs[postId].trim(),
+          parent_comment_id: parentCommentId || null
         });
 
       setCommentInputs({ ...commentInputs, [postId]: '' });
-      toast.success('Comment added!');
+      toast.success(parentCommentId ? 'Reply added!' : 'Comment added!');
       fetchPosts();
     } catch (error) {
       console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
     }
+  };
+
+  const handleReply = async (commentId: string, content: string) => {
+    if (!user || !content.trim()) return;
+
+    // Find which post this comment belongs to
+    const post = posts.find(p => 
+      p.post_comments.some(c => c.id === commentId || findCommentById(c, commentId))
+    );
+
+    if (!post) return;
+
+    try {
+      await supabase
+        .from('post_comments')
+        .insert({
+          post_id: post.id,
+          user_id: user.id,
+          content: content.trim(),
+          parent_comment_id: commentId
+        });
+
+      toast.success('Reply added!');
+      fetchPosts();
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      toast.error('Failed to add reply');
+    }
+  };
+
+  const findCommentById = (comment: any, id: string): boolean => {
+    if (comment.id === id) return true;
+    if (comment.replies) {
+      return comment.replies.some((reply: any) => findCommentById(reply, id));
+    }
+    return false;
   };
 
   const toggleComments = (postId: string) => {
@@ -411,27 +462,17 @@ const Social = () => {
                       </div>
                     </div>
 
-                    {/* Comments List */}
+                    {/* Comments Thread */}
                     {post.post_comments.length > 0 && (
                       <div className="space-y-3">
                         {post.post_comments.map((comment) => (
-                          <div key={comment.id} className="flex gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={comment.profiles.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {comment.profiles.display_name?.[0] || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="bg-background/50 px-3 py-2 rounded-lg">
-                                <p className="font-semibold text-sm">{comment.profiles.display_name || 'Anonymous'}</p>
-                                <p className="text-sm">{comment.content}</p>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 ml-3">
-                                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                              </p>
-                            </div>
-                          </div>
+                          <CommentThread
+                            key={comment.id}
+                            comment={comment}
+                            postId={post.id}
+                            currentUserId={user?.id}
+                            onReply={handleReply}
+                          />
                         ))}
                       </div>
                     )}

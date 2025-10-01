@@ -114,6 +114,84 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          receiver_id: string
+          sender_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          receiver_id: string
+          sender_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      friends: {
+        Row: {
+          created_at: string | null
+          id: string
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -160,6 +238,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          parent_comment_id: string | null
           post_id: string
           updated_at: string
           user_id: string
@@ -168,6 +247,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           post_id: string
           updated_at?: string
           user_id: string
@@ -176,11 +256,20 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          parent_comment_id?: string | null
           post_id?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_likes: {
         Row: {
