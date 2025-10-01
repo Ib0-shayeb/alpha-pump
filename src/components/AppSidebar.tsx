@@ -34,8 +34,8 @@ import { supabase } from "@/integrations/supabase/client";
 const mainItems = [
   { title: "Main", url: "/", icon: Home },
   { title: "Profile", url: "/profile", icon: User },
-  { title: "Messages", url: "/messages", icon: MessageCircle },
-  { title: "Inbox", url: "/inbox", icon: Bell, badge: true },
+  { title: "Messages", url: "/messages", icon: MessageCircle, badge: "messages" },
+  { title: "Inbox", url: "/inbox", icon: Bell, badge: "inbox" },
 ];
 
 const socialItems = [
@@ -66,6 +66,7 @@ export function AppSidebar() {
   const [followerCount, setFollowerCount] = useState(0);
   const [userRole, setUserRole] = useState<string>('client');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   const collapsed = state === "collapsed";
 
@@ -76,6 +77,58 @@ export function AppSidebar() {
       fetchUserRole();
       fetchUnreadCount();
     }
+  }, [user]);
+
+  // Real-time updates for unread counts
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('unread-counts')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id.eq.${user.id}`
+        },
+        () => {
+          console.log('Message change detected, refreshing unread counts');
+          fetchUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id.eq.${user.id}`
+        },
+        () => {
+          console.log('Notification change detected, refreshing unread counts');
+          fetchUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `receiver_id.eq.${user.id}`
+        },
+        () => {
+          console.log('Friend request change detected, refreshing unread counts');
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchProfile = async () => {
@@ -130,7 +183,18 @@ export function AppSidebar() {
       .eq('receiver_id', user.id)
       .eq('status', 'pending');
     
-    const totalUnread = (notificationsCount || 0) + (friendRequestsCount || 0);
+    // Get unread messages count (count of unique chats with unread messages)
+    const { data: unreadMessages } = await supabase
+      .from('messages')
+      .select('sender_id')
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
+    
+    // Count unique senders (chats) with unread messages
+    const uniqueUnreadChats = new Set(unreadMessages?.map(msg => msg.sender_id) || []).size;
+    setUnreadMessagesCount(uniqueUnreadChats);
+    
+    const totalUnread = (notificationsCount || 0) + (friendRequestsCount || 0) + uniqueUnreadChats;
     setUnreadCount(totalUnread);
   };
 
@@ -192,12 +256,20 @@ export function AppSidebar() {
                     >
                       <item.icon className="w-5 h-5" />
                       {!collapsed && <span>{item.title}</span>}
-                      {item.badge && unreadCount > 0 && (
+                      {item.badge === "inbox" && unreadCount > 0 && (
                         <Badge 
                           variant="destructive" 
                           className="h-5 w-5 flex items-center justify-center text-xs p-0 ml-auto"
                         >
                           {unreadCount > 9 ? "9+" : unreadCount}
+                        </Badge>
+                      )}
+                      {item.badge === "messages" && unreadMessagesCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="h-5 w-5 flex items-center justify-center text-xs p-0 ml-auto"
+                        >
+                          {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
                         </Badge>
                       )}
                     </NavLink>

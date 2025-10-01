@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { MyScheduleDialog } from "@/components/MyScheduleDialog";
 import { CommentThread } from "@/components/CommentThread";
+import { ShareDialog } from "@/components/ShareDialog";
 
 interface Post {
   id: string;
@@ -53,6 +54,8 @@ const Social = () => {
   const [selectedWorkout, setSelectedWorkout] = useState<SelectedWorkout | null>(null);
   const [commentInputs, setCommentInputs] = useState<{ [key: string]: string }>({});
   const [showComments, setShowComments] = useState<{ [key: string]: boolean }>({});
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [selectedPostForShare, setSelectedPostForShare] = useState<Post | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -251,6 +254,11 @@ const Social = () => {
     setShowComments({ ...showComments, [postId]: !showComments[postId] });
   };
 
+  const handleShare = (post: Post) => {
+    setSelectedPostForShare(post);
+    setIsShareDialogOpen(true);
+  };
+
   const formatWorkoutDuration = (start: string, end?: string) => {
     if (!end) return 'In progress...';
     const duration = new Date(end).getTime() - new Date(start).getTime();
@@ -429,7 +437,12 @@ const Social = () => {
                     <MessageCircle className="w-4 h-4" />
                     {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2 text-muted-foreground"
+                    onClick={() => handleShare(post)}
+                  >
                     <Share className="w-4 h-4" />
                     Share
                   </Button>
@@ -506,6 +519,20 @@ const Social = () => {
         onClose={() => setIsScheduleDialogOpen(false)}
         onSelectWorkout={handleWorkoutSelect}
       />
+
+      {/* Share Dialog */}
+      {selectedPostForShare && (
+        <ShareDialog
+          isOpen={isShareDialogOpen}
+          onClose={() => {
+            setIsShareDialogOpen(false);
+            setSelectedPostForShare(null);
+          }}
+          postId={selectedPostForShare.id}
+          postContent={selectedPostForShare.content}
+          postType={selectedPostForShare.post_type}
+        />
+      )}
     </Layout>
   );
 };

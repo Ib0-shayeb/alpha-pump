@@ -332,6 +332,27 @@ const MessagesPage = () => {
     }
   };
 
+  const renderMessageContent = (content: string) => {
+    // URL regex pattern
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = content.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            className="text-blue-400 hover:text-blue-300 underline break-all"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const filteredFriends = friends.filter(friend =>
     friend.profiles.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     friend.profiles.username?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -518,7 +539,7 @@ const MessagesPage = () => {
                             : 'bg-muted'
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-sm whitespace-pre-wrap">{renderMessageContent(message.content)}</p>
                         <p className={`text-xs mt-1 ${
                           message.sender_id === user?.id
                             ? 'text-primary-foreground/70'

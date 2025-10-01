@@ -27,6 +27,7 @@ import { TrainerProfileEdit } from "./pages/TrainerProfileEdit";
 import AITrainer from "./pages/AITrainer";
 import { WorkoutSessionDetails } from "./pages/WorkoutSessionDetails";
 import { RoutineDetails } from "./pages/RoutineDetails";
+import PostPage from "./pages/PostPage";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import EmailConfirmation from "./pages/EmailConfirmation";
@@ -65,6 +66,7 @@ const AppContent = () => {
         <Route path="/trainer/client/:clientId" element={<AuthWrapper><ClientDetails /></AuthWrapper>} />
         <Route path="/workout-session/:sessionId" element={<AuthWrapper><WorkoutSessionDetails /></AuthWrapper>} />
         <Route path="/routine/:routineId/day/:dayId" element={<AuthWrapper><RoutineDetails /></AuthWrapper>} />
+        <Route path="/post/:postId" element={<AuthWrapper><PostPage /></AuthWrapper>} />
         <Route path="/workouts" element={<AuthWrapper><Dashboard /></AuthWrapper>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

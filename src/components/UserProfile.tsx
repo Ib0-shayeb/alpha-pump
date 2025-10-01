@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, UserPlus, Users, Dumbbell, Trophy, Heart, Calendar, Target } from "lucide-react";
+import { UserWorkoutCalendar } from "@/components/UserWorkoutCalendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -570,6 +571,9 @@ export const UserProfile = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Workout Schedule */}
+        <UserWorkoutCalendar userId={userId} />
       </div>
     </Layout>
   );
