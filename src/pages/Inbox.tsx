@@ -365,7 +365,7 @@ export const Inbox = () => {
 
     try {
       const { data: requestsData, error: requestsError } = await supabase
-        .from('friend_requests')
+        .from('friend_requests' as any)
         .select('*')
         .eq('receiver_id', user.id)
         .eq('status', 'pending')
@@ -379,7 +379,7 @@ export const Inbox = () => {
       }
 
       // Get profile data for senders
-      const senderIds = requestsData.map(req => req.sender_id);
+      const senderIds = (requestsData as any[]).map((req: any) => req.sender_id);
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name, username, avatar_url, bio')
@@ -388,7 +388,7 @@ export const Inbox = () => {
       if (profilesError) throw profilesError;
 
       // Combine the data
-      const requestsWithProfiles = requestsData.map(request => ({
+      const requestsWithProfiles = (requestsData as any[]).map((request: any) => ({
         ...request,
         profiles: profilesData?.find(profile => profile.user_id === request.sender_id) || {
           user_id: request.sender_id,
@@ -399,7 +399,7 @@ export const Inbox = () => {
         }
       }));
 
-      setFriendRequests(requestsWithProfiles);
+      setFriendRequests(requestsWithProfiles as any);
     } catch (error) {
       console.error('Error fetching friend requests:', error);
       toast({
@@ -415,7 +415,7 @@ export const Inbox = () => {
 
     try {
       const { error } = await supabase
-        .from('friend_requests')
+        .from('friend_requests' as any)
         .update({ status: 'accepted' })
         .eq('id', requestId);
 
@@ -443,7 +443,7 @@ export const Inbox = () => {
 
     try {
       const { error } = await supabase
-        .from('friend_requests')
+        .from('friend_requests' as any)
         .update({ status: 'declined' })
         .eq('id', requestId);
 

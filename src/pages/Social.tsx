@@ -74,7 +74,7 @@ const Social = () => {
           const [profileResult, likesResult, commentsResult, sessionResult] = await Promise.all([
             supabase.from('profiles').select('display_name, username, avatar_url').eq('user_id', post.user_id).single(),
             supabase.from('post_likes').select('id, user_id').eq('post_id', post.id),
-            supabase.from('post_comments').select('id, content, user_id').eq('post_id', post.id),
+            supabase.from('post_comments').select('id, content, user_id, created_at').eq('post_id', post.id),
             post.workout_session_id 
               ? supabase.from('workout_sessions').select('name, start_time, end_time').eq('id', post.workout_session_id).single()
               : Promise.resolve({ data: null })

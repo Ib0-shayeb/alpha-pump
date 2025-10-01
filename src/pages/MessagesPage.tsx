@@ -147,7 +147,7 @@ const MessagesPage = () => {
     try {
       // Get friends where user is user1_id
       const { data: friends1Data, error: friends1Error } = await supabase
-        .from('friends')
+        .from('friends' as any)
         .select('id, user2_id, created_at')
         .eq('user1_id', user.id);
 
@@ -155,7 +155,7 @@ const MessagesPage = () => {
 
       // Get friends where user is user2_id
       const { data: friends2Data, error: friends2Error } = await supabase
-        .from('friends')
+        .from('friends' as any)
         .select('id, user1_id, created_at')
         .eq('user2_id', user.id);
 
@@ -163,8 +163,8 @@ const MessagesPage = () => {
 
       // Combine and get unique friend IDs
       const allFriends = [
-        ...(friends1Data || []).map(f => ({ ...f, friend_id: f.user2_id })),
-        ...(friends2Data || []).map(f => ({ ...f, friend_id: f.user1_id }))
+        ...((friends1Data || []) as any[]).map((f: any) => ({ ...f, friend_id: f.user2_id })),
+        ...((friends2Data || []) as any[]).map((f: any) => ({ ...f, friend_id: f.user1_id }))
       ];
 
       // Remove duplicates based on friend_id
@@ -200,7 +200,7 @@ const MessagesPage = () => {
 
           // Get last message
           const { data: lastMessageData } = await supabase
-            .from('messages')
+            .from('messages' as any)
             .select('content, created_at, sender_id')
             .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
             .or(`sender_id.eq.${friend.friend_id},receiver_id.eq.${friend.friend_id}`)
@@ -210,7 +210,7 @@ const MessagesPage = () => {
 
           // Get unread count
           const { count: unreadCount } = await supabase
-            .from('messages')
+            .from('messages' as any)
             .select('*', { count: 'exact', head: true })
             .eq('receiver_id', user.id)
             .eq('sender_id', friend.friend_id)
@@ -249,7 +249,7 @@ const MessagesPage = () => {
 
     try {
       const { data, error } = await supabase
-        .from('messages')
+        .from('messages' as any)
         .select('*')
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
@@ -261,12 +261,12 @@ const MessagesPage = () => {
 
       console.log('Fetched messages:', data);
 
-      setMessages(data || []);
+      setMessages((data as any) || []);
 
       // Mark messages as read
       const { error: readError } = await supabase
-        .from('messages')
-        .update({ is_read: true })
+        .from('messages' as any)
+        .update({ is_read: true } as any)
         .eq('sender_id', friendId)
         .eq('receiver_id', user.id)
         .eq('is_read', false);
@@ -295,12 +295,12 @@ const MessagesPage = () => {
     setSending(true);
     try {
       const { data, error } = await supabase
-        .from('messages')
+        .from('messages' as any)
         .insert({
           sender_id: user.id,
           receiver_id: selectedFriend.profiles.user_id,
           content: newMessage.trim()
-        })
+        } as any)
         .select();
 
       if (error) {

@@ -121,15 +121,15 @@ const EditProfilePage = () => {
             .single();
 
           if (createError) throw createError;
-          setProfile(newProfile);
-          populateEditForm(newProfile);
+          setProfile({ ...newProfile, followerCount: 0, followingCount: 0 });
+          populateEditForm({ ...newProfile, followerCount: 0, followingCount: 0 });
         } else {
           throw profileError;
         }
       } else {
         console.log('Profile found:', profileData);
-        setProfile(profileData);
-        populateEditForm(profileData);
+        setProfile({ ...profileData, followerCount: 0, followingCount: 0 });
+        populateEditForm({ ...profileData, followerCount: 0, followingCount: 0 });
       }
 
       // Get follower counts
@@ -204,7 +204,7 @@ const EditProfilePage = () => {
           date_of_birth: editForm.date_of_birth || null,
           location: editForm.location || null,
           interests: editForm.interests ? editForm.interests.split(',').map(i => i.trim()).filter(i => i) : [],
-          fitness_goals: editForm.fitness_goals ? editForm.fitness_goals.split(',').map(g => g.trim()).filter(g => g) : [],
+          fitness_goals: editForm.fitness_goals ? editForm.fitness_goals.split(',').map(g => g.trim()).filter(g => g) as any : [],
           experience_level: editForm.experience_level || 'beginner',
           preferred_workout_times: editForm.preferred_workout_times ? editForm.preferred_workout_times.split(',').map(t => t.trim()).filter(t => t) : [],
           social_media_links: {

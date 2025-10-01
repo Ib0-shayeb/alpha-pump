@@ -104,7 +104,7 @@ const UserProfilePage = () => {
     try {
       console.log('Fetching profile for user:', user.id);
       
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
@@ -157,17 +157,6 @@ const UserProfilePage = () => {
         ...data,
         followerCount: followerCount || 0,
         followingCount: followingCount || 0
-      });
-
-      // Set edit form
-      setEditForm({
-        display_name: data.display_name || '',
-        username: data.username || '',
-        bio: data.bio || '',
-        height: data.height?.toString() || '',
-        weight: data.weight?.toString() || '',
-        activity_level: data.activity_level || '',
-        fitness_goals: data.fitness_goals || []
       });
 
       setLoading(false);
@@ -345,6 +334,7 @@ const UserProfilePage = () => {
       // Combine the data
       const followingWithProfiles = followsData.map(follow => ({
         ...follow,
+        follower_id: user.id,
         profiles: profilesData?.find(profile => profile.user_id === follow.following_id) || {
           user_id: follow.following_id,
           display_name: null,
@@ -354,7 +344,7 @@ const UserProfilePage = () => {
         }
       }));
 
-      setFollowing(followingWithProfiles);
+      setFollowing(followingWithProfiles as any);
     } catch (error) {
       console.error('Error fetching following:', error);
       toast.error('Failed to load following');
