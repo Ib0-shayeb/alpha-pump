@@ -2,14 +2,13 @@ import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Dumbbell, Calendar, Trophy, Target, Users, Shield, SkipForward, Bot, Zap, Heart, MessageSquare } from "lucide-react";
+import { Plus, Dumbbell, Calendar, Trophy, Target, Users, Shield, SkipForward, Bot, Zap, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientWorkoutCalendar } from "@/components/ClientWorkoutCalendar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDistanceToNow } from "date-fns";
+// Removed unused imports for social features
  
 import { endOfWeek, format, startOfWeek } from "date-fns";
 
@@ -33,8 +32,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [totalWorkouts, setTotalWorkouts] = useState<number>(0);
   const [workoutsThisWeek, setWorkoutsThisWeek] = useState<number>(0);
-  const [recentPosts, setRecentPosts] = useState<any[]>([]);
-  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  // Removed recent posts and suggested users to avoid 400 errors
   const [followingCount, setFollowingCount] = useState(0);
   const [friendCount, setFriendCount] = useState(0);
 
@@ -110,44 +108,10 @@ const Dashboard = () => {
     if (userRole === 'client') {
       fetchActiveRoutines();
     }
-    fetchRecentPosts();
-    fetchSuggestedUsers();
     fetchSocialStats();
   }, [user, userRole]);
 
-  const fetchRecentPosts = async () => {
-    if (!user) return;
-    try {
-      const { data: posts } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles (display_name, username, avatar_url),
-          post_likes (id)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      setRecentPosts(posts || []);
-    } catch (error) {
-      console.error('Error fetching recent posts:', error);
-    }
-  };
-
-  const fetchSuggestedUsers = async () => {
-    if (!user) return;
-    try {
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, username, avatar_url, bio')
-        .neq('user_id', user.id)
-        .limit(3);
-
-      setSuggestedUsers(users || []);
-    } catch (error) {
-      console.error('Error fetching suggested users:', error);
-    }
-  };
+  // Removed fetchRecentPosts and fetchSuggestedUsers functions
 
   const fetchSocialStats = async () => {
     if (!user) return;
@@ -274,118 +238,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Social Activity */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Posts */}
-          <Card className="p-6 bg-gradient-card shadow-card border-border/50">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Recent Activity
-              </h3>
-              <Link to="/social">
-                <Button variant="ghost" size="sm">
-                  View All
-                </Button>
-              </Link>
-            </div>
-            
-            {recentPosts.length > 0 ? (
-              <div className="space-y-3">
-                {recentPosts.slice(0, 2).map((post) => (
-                  <div key={post.id} className="flex items-start gap-3 p-3 bg-background/50 rounded-lg">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={post.profiles?.avatar_url} />
-                      <AvatarFallback>
-                        {post.profiles?.display_name?.[0] || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {post.profiles?.display_name || 'Anonymous'}
-                      </p>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {post.content}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Heart className="w-3 h-3" />
-                          {post.post_likes?.length || 0}
-                        </span>
-                        <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">No recent activity</p>
-                <Link to="/social">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Explore Feed
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </Card>
-
-          {/* Suggested Users */}
-          <Card className="p-6 bg-gradient-card shadow-card border-border/50">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Users className="w-5 h-5 text-accent" />
-                Discover Users
-              </h3>
-              <Link to="/discover">
-                <Button variant="ghost" size="sm">
-                  View All
-                </Button>
-              </Link>
-            </div>
-            
-            {suggestedUsers.length > 0 ? (
-              <div className="space-y-3">
-                {suggestedUsers.slice(0, 2).map((profile) => (
-                  <div key={profile.user_id} className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={profile.avatar_url} />
-                        <AvatarFallback>
-                          {profile.display_name?.[0] || profile.username?.[0] || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {profile.display_name || profile.username || 'Anonymous'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {profile.role === 'trainer' ? 'Personal Trainer' : 'Fitness Enthusiast'}
-                        </p>
-                      </div>
-                    </div>
-                    <Link to={`/profile/${profile.user_id}`}>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4">
-                <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">No suggestions yet</p>
-                <Link to="/discover">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Find Users
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </Card>
-        </div>
+        {/* Social Activity - Removed to avoid 400 errors */}
 
 
         {/* Client Workout Calendar */}
