@@ -79,7 +79,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       
       console.log('Fetching schedule for client:', clientId, 'week:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
 
-      // Fetch active assignments with routine data
+      // Fetch active assignments first (simpler query)
       const { data: assignments, error: assignmentError } = await supabase
         .from('client_routine_assignments')
         .select(`
@@ -88,26 +88,63 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
           plan_type,
           start_date,
           is_active,
-          current_day_index,
-          workout_routines (
-            name,
-            days_per_week,
-            routine_days (
-              id,
-              name,
-              description,
-              day_number
-            )
-          )
+          current_day_index
         `)
         .eq('client_id', clientId)
         .eq('is_active', true);
 
       if (assignmentError) throw assignmentError;
       
-      console.log('Fetched assignments:', assignments);
-      console.log('Assignments count:', Array.isArray(assignments) ? assignments.length : 0,
-        Array.isArray(assignments) ? assignments.map((a: any) => ({ id: a.id, routine_id: a.routine_id, plan_type: a.plan_type })) : []);
+      if (!assignments || assignments.length === 0) {
+        setSchedule([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch routine data separately
+      const routineIds = assignments.map(a => a.routine_id);
+      const { data: routines, error: routineError } = await supabase
+        .from('workout_routines')
+        .select(`
+          id,
+          name,
+          days_per_week
+        `)
+        .in('id', routineIds);
+
+      if (routineError) throw routineError;
+
+      // Fetch routine days separately
+      const { data: routineDays, error: daysError } = await supabase
+        .from('routine_days')
+        .select(`
+          id,
+          routine_id,
+          name,
+          description,
+          day_number
+        `)
+        .in('routine_id', routineIds)
+        .order('routine_id, day_number');
+
+      if (daysError) throw daysError;
+
+      // Combine the data
+      const assignmentsWithRoutines = assignments.map(assignment => {
+        const routine = routines?.find(r => r.id === assignment.routine_id);
+        const days = routineDays?.filter(d => d.routine_id === assignment.routine_id) || [];
+        
+        return {
+          ...assignment,
+          workout_routines: routine ? {
+            ...routine,
+            routine_days: days
+          } : null
+        };
+      });
+      
+      console.log('Fetched assignments:', assignmentsWithRoutines);
+      console.log('Assignments count:', assignmentsWithRoutines.length);
 
       // Fetch completed workout sessions for the week
       const { data: sessions, error: sessionError } = await supabase
@@ -121,7 +158,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
 
       // Generate routine-based schedules (one row per active assignment)
       const routineBasedSchedules = generateRoutineSchedules(
-        assignments || [],
+        assignmentsWithRoutines || [],
         sessions || [],
         weekStart,
         weekEnd

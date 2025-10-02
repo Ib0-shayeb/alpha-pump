@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Save, ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { Plus, Save, ArrowLeft, Edit, Trash2, Eye } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ExerciseAutocomplete } from "@/components/ExerciseAutocomplete";
+import { ExerciseDetailsModal } from "@/components/ExerciseDetailsModal";
+import ExerciseTest from "@/components/ExerciseTest";
 
 interface RoutineDay {
   id?: string;
@@ -18,6 +21,7 @@ interface RoutineDay {
   description: string;
   exercises: Array<{
     name: string;
+    exerciseId?: string;
     sets: Array<{
       reps: string;
       weight_suggestion: string;
@@ -36,6 +40,8 @@ const EditRoutine = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [showExerciseDetails, setShowExerciseDetails] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -52,6 +58,12 @@ const EditRoutine = () => {
     
     try {
       setLoading(true);
+      console.log('Loading routine with ID:', id, 'User ID:', user.id);
+      
+      // Add timeout handling
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout')), 10000)
+      );
       
       // Load routine details
       const { data: routine, error: routineError } = await supabase
@@ -61,6 +73,7 @@ const EditRoutine = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      console.log('Routine query result:', { routine, error: routineError });
       if (routineError) throw routineError;
       if (!routine) {
         toast({
@@ -75,44 +88,54 @@ const EditRoutine = () => {
       setRoutineName(routine.name);
       setDescription(routine.description || '');
 
-      // Load routine days
+      // Load routine days first
       const { data: routineDays, error: daysError } = await supabase
         .from('routine_days')
-        .select(`
-          id,
-          name,
-          description,
-          routine_exercises (
-            id,
-            exercise_name,
-            sets,
-            weight_suggestion,
-            notes,
-            order_index
-          )
-        `)
+        .select('id, name, description, day_number')
         .eq('routine_id', id)
-        .order('created_at');
+        .order('day_number');
 
       if (daysError) throw daysError;
 
+      // Load exercises separately to avoid complex joins
+      const { data: routineExercises, error: exercisesError } = await supabase
+        .from('routine_exercises')
+        .select(`
+          id,
+          routine_day_id,
+          exercise_name,
+          exercise_id,
+          sets,
+          weight_suggestion,
+          notes,
+          order_index
+        `)
+        .in('routine_day_id', routineDays.map(day => day.id))
+        .order('routine_day_id, order_index');
+
+      if (exercisesError) throw exercisesError;
+
       // Convert to our format
-      const formattedDays: RoutineDay[] = routineDays.map(day => ({
-        id: day.id,
-        name: day.name,
-        description: day.description || '',
-        exercises: day.routine_exercises
-          .sort((a, b) => a.order_index - b.order_index)
-          .map(exercise => ({
-            name: exercise.exercise_name,
-            sets: Array.from({ length: exercise.sets || 3 }, (_, i) => ({
-              reps: '',
-              weight_suggestion: exercise.weight_suggestion || '',
-              notes: ''
-            })),
-            notes: exercise.notes || ''
-          }))
-      }));
+      const formattedDays: RoutineDay[] = routineDays.map(day => {
+        const dayExercises = routineExercises.filter(ex => ex.routine_day_id === day.id);
+        return {
+          id: day.id,
+          name: day.name,
+          description: day.description || '',
+          exercises: dayExercises
+            .sort((a, b) => a.order_index - b.order_index)
+            .map(exercise => ({
+              name: exercise.exercise_name,
+              exerciseId: exercise.exercise_id || undefined,
+              sets: Array.from({ length: exercise.sets || 3 }, (_, i) => ({
+                reps: '',
+                weight_suggestion: exercise.weight_suggestion || '',
+                notes: ''
+              })),
+              notes: exercise.notes || ''
+            }))
+        };
+      });
 
       setDays(formattedDays);
     } catch (error) {
@@ -169,8 +192,10 @@ const EditRoutine = () => {
     
     try {
       setSaving(true);
+      console.log('Starting to save routine:', { routineName, daysCount: days.length });
 
       // Update routine
+      console.log('Updating routine...');
       const { error: routineError } = await supabase
         .from('workout_routines')
         .update({
@@ -180,48 +205,103 @@ const EditRoutine = () => {
         })
         .eq('id', id);
 
+      console.log('Routine update result:', { error: routineError });
       if (routineError) throw routineError;
 
-      // Delete existing days and exercises
-      const { error: deleteDaysError } = await supabase
+      // Get existing days to update them instead of deleting
+      console.log('Getting existing days...');
+      const { data: existingDays, error: getDaysError } = await supabase
         .from('routine_days')
-        .delete()
-        .eq('routine_id', id);
+        .select('id, day_number')
+        .eq('routine_id', id)
+        .order('day_number');
 
-      if (deleteDaysError) throw deleteDaysError;
+      console.log('Existing days result:', { data: existingDays, error: getDaysError });
+      if (getDaysError) throw getDaysError;
 
-      // Create new days and exercises
+      // Update or create days and exercises
+      console.log('Updating/creating days and exercises...');
       for (let i = 0; i < days.length; i++) {
         const day = days[i];
+        const existingDay = existingDays?.[i];
         
-        const { data: dayData, error: dayError } = await supabase
-          .from('routine_days')
-          .insert({
-            routine_id: id,
-            day_number: i + 1,
-            name: day.name,
-            description: day.description
-          })
-          .select()
-          .single();
+        let dayData;
+        
+        if (existingDay) {
+          // Update existing day
+          console.log(`Updating existing day ${i + 1}:`, day.name);
+          const { data: updatedDay, error: dayError } = await supabase
+            .from('routine_days')
+            .update({
+              name: day.name,
+              description: day.description
+            })
+            .eq('id', existingDay.id)
+            .select()
+            .single();
 
-        if (dayError) throw dayError;
+          console.log(`Day ${i + 1} update result:`, { data: updatedDay, error: dayError });
+          if (dayError) throw dayError;
+          dayData = updatedDay;
+        } else {
+          // Create new day
+          console.log(`Creating new day ${i + 1}:`, day.name);
+          const { data: newDay, error: dayError } = await supabase
+            .from('routine_days')
+            .insert({
+              routine_id: id,
+              day_number: i + 1,
+              name: day.name,
+              description: day.description
+            })
+            .select()
+            .single();
 
+          console.log(`Day ${i + 1} creation result:`, { data: newDay, error: dayError });
+          if (dayError) throw dayError;
+          dayData = newDay;
+        }
+
+        // Delete existing exercises for this day
+        console.log(`Deleting existing exercises for day ${i + 1}...`);
+        const { error: deleteExercisesError } = await supabase
+          .from('routine_exercises')
+          .delete()
+          .eq('routine_day_id', dayData.id);
+
+        if (deleteExercisesError) {
+          console.error('Error deleting existing exercises:', deleteExercisesError);
+          throw deleteExercisesError;
+        }
+
+        // Insert new exercises
         for (let j = 0; j < day.exercises.length; j++) {
           const exercise = day.exercises[j];
           
+          console.log(`Saving exercise ${j + 1}:`, exercise);
+          
+          const exerciseData = {
+            routine_day_id: dayData.id,
+            exercise_name: exercise.name,
+            // exercise_id: exercise.exerciseId || null, // Temporarily commented out
+            sets: exercise.sets.length,
+            weight_suggestion: exercise.sets[0]?.weight_suggestion || '',
+            notes: exercise.notes,
+            order_index: j
+          };
+          
+          console.log('Exercise data to insert:', exerciseData);
+          
           const { error: exerciseError } = await supabase
             .from('routine_exercises')
-            .insert({
-              routine_day_id: dayData.id,
-              exercise_name: exercise.name,
-              sets: exercise.sets.length,
-              weight_suggestion: exercise.sets[0]?.weight_suggestion || '',
-              notes: exercise.notes,
-              order_index: j
-            });
+            .insert(exerciseData);
 
-          if (exerciseError) throw exerciseError;
+          if (exerciseError) {
+            console.error('Error saving exercise:', exerciseError);
+            throw exerciseError;
+          }
+          
+          console.log(`Exercise ${j + 1} saved successfully`);
         }
       }
 
@@ -268,6 +348,9 @@ const EditRoutine = () => {
           </Link>
         </div>
 
+        {/* Temporary Test Component */}
+        <ExerciseTest />
+        
         <Card className="p-6 bg-gradient-card shadow-card border-border/50">
           <h2 className="text-xl font-semibold mb-4">Routine Details</h2>
           <div className="space-y-4">
@@ -417,6 +500,7 @@ const EditRoutine = () => {
                       onClick={() => {
                         const newExercise = {
                           name: '',
+                          exerciseId: undefined,
                           sets: [{ reps: '', weight_suggestion: '', notes: '' }],
                           notes: ''
                         };
@@ -450,16 +534,47 @@ const EditRoutine = () => {
                         
                         <div className="space-y-2">
                           <Label htmlFor={`exerciseName-${exerciseIndex}`}>Exercise Name</Label>
-                          <Input
-                            id={`exerciseName-${exerciseIndex}`}
-                            value={exercise.name}
-                            onChange={(e) => {
-                              const updatedExercises = [...editingDay.exercises];
-                              updatedExercises[exerciseIndex].name = e.target.value;
-                              setEditingDay({ ...editingDay, exercises: updatedExercises });
-                            }}
-                            placeholder="e.g., Bench Press"
-                          />
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <ExerciseAutocomplete
+                                value={exercise.name}
+                                onChange={(value) => {
+                                  const updatedExercises = [...editingDay.exercises];
+                                  updatedExercises[exerciseIndex].name = value;
+                                  setEditingDay({ ...editingDay, exercises: updatedExercises });
+                                }}
+                                onSelect={(selectedExercise) => {
+                                  const updatedExercises = [...editingDay.exercises];
+                                  updatedExercises[exerciseIndex].name = selectedExercise.name;
+                                  updatedExercises[exerciseIndex].exerciseId = selectedExercise.id;
+                                  // Auto-fill notes with exercise description
+                                  if (selectedExercise.description) {
+                                    updatedExercises[exerciseIndex].notes = selectedExercise.description;
+                                  }
+                                  setEditingDay({ ...editingDay, exercises: updatedExercises });
+                                }}
+                                onExerciseIdChange={(exerciseId) => {
+                                  const updatedExercises = [...editingDay.exercises];
+                                  updatedExercises[exerciseIndex].exerciseId = exerciseId;
+                                  setEditingDay({ ...editingDay, exercises: updatedExercises });
+                                }}
+                                placeholder="e.g., Bench Press"
+                              />
+                            </div>
+                            {exercise.exerciseId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedExerciseId(exercise.exerciseId!);
+                                  setShowExerciseDetails(true);
+                                }}
+                                className="h-10"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -574,6 +689,16 @@ const EditRoutine = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Exercise Details Modal */}
+        <ExerciseDetailsModal
+          exerciseId={selectedExerciseId}
+          isOpen={showExerciseDetails}
+          onClose={() => {
+            setShowExerciseDetails(false);
+            setSelectedExerciseId(null);
+          }}
+        />
       </div>
     </Layout>
   );

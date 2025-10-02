@@ -11,6 +11,9 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ExerciseAutocomplete } from "@/components/ExerciseAutocomplete";
+import { ExerciseDetailsModal } from "@/components/ExerciseDetailsModal";
+import { Eye } from "lucide-react";
 
 interface RoutineDay {
   id?: string;
@@ -18,6 +21,7 @@ interface RoutineDay {
   description: string;
   exercises: Array<{
     name: string;
+    exerciseId?: string;
     sets: Array<{
       reps: string;
       weight_suggestion: string;
@@ -33,6 +37,8 @@ const CreateRoutine = () => {
   const [editingDay, setEditingDay] = useState<RoutineDay | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [showExerciseDetails, setShowExerciseDetails] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -85,6 +91,10 @@ const CreateRoutine = () => {
       return;
     }
 
+    if (saving) {
+      return; // Prevent multiple saves
+    }
+
     setSaving(true);
     
     try {
@@ -119,21 +129,34 @@ const CreateRoutine = () => {
         if (dayError) throw dayError;
 
         // Create routine exercises for this day
+        console.log(`Creating exercises for day ${i + 1}:`, day.exercises);
         for (let j = 0; j < day.exercises.length; j++) {
           const exercise = day.exercises[j];
+          console.log(`Saving exercise ${j + 1}:`, exercise);
+          
+          const exerciseData = {
+            routine_day_id: routineDay.id,
+            exercise_name: exercise.name,
+            exercise_id: exercise.exerciseId || null,
+            sets: exercise.sets.length,
+            reps: exercise.sets.map(set => set.reps).join(', '),
+            weight_suggestion: exercise.sets.map(set => set.weight_suggestion).join(', '),
+            notes: exercise.notes || null,
+            order_index: j
+          };
+          
+          console.log('Exercise data to insert:', exerciseData);
+          
           const { error: exerciseError } = await supabase
             .from('routine_exercises')
-            .insert({
-              routine_day_id: routineDay.id,
-              exercise_name: exercise.name,
-              sets: exercise.sets.length,
-              reps: exercise.sets.map(set => set.reps).join(', '),
-              weight_suggestion: exercise.sets.map(set => set.weight_suggestion).join(', '),
-              notes: exercise.notes || null,
-              order_index: j
-            });
+            .insert(exerciseData);
 
-          if (exerciseError) throw exerciseError;
+          if (exerciseError) {
+            console.error('Error saving exercise:', exerciseError);
+            throw exerciseError;
+          }
+          
+          console.log(`Exercise ${j + 1} saved successfully`);
         }
       }
 
@@ -251,7 +274,7 @@ const CreateRoutine = () => {
             onClick={() => saveRoutine(true)}
             disabled={saving || !routineName.trim()}
           >
-            Save as Draft
+            {saving ? 'Saving...' : 'Save as Draft'}
           </Button>
         </div>
 
@@ -311,26 +334,60 @@ const CreateRoutine = () => {
                     <Card key={exerciseIndex} className="p-3 bg-card/50">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <Input
-                            value={exercise.name}
-                            onChange={(e) => {
-                              const updatedExercises = [...editingDay.exercises];
-                              updatedExercises[exerciseIndex].name = e.target.value;
-                              setEditingDay({...editingDay, exercises: updatedExercises});
-                            }}
-                            placeholder="Exercise name"
-                            className="flex-1 mr-2"
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const updatedExercises = editingDay.exercises.filter((_, i) => i !== exerciseIndex);
-                              setEditingDay({...editingDay, exercises: updatedExercises});
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
+                          <div className="flex-1 mr-2">
+                            <ExerciseAutocomplete
+                              value={exercise.name}
+                              onChange={(value) => {
+                                const updatedExercises = [...editingDay.exercises];
+                                updatedExercises[exerciseIndex].name = value;
+                                setEditingDay({...editingDay, exercises: updatedExercises});
+                              }}
+                              onSelect={(selectedExercise) => {
+                                if (selectedExercise) {
+                                  // Auto-fill with exercise details if available
+                                  const updatedExercises = [...editingDay.exercises];
+                                  updatedExercises[exerciseIndex].name = selectedExercise.name;
+                                  // You could also auto-fill notes with exercise description
+                                  if (!updatedExercises[exerciseIndex].notes) {
+                                    updatedExercises[exerciseIndex].notes = selectedExercise.description;
+                                  }
+                                  setEditingDay({...editingDay, exercises: updatedExercises});
+                                }
+                              }}
+                              onExerciseIdChange={(exerciseId) => {
+                                const updatedExercises = [...editingDay.exercises];
+                                updatedExercises[exerciseIndex].exerciseId = exerciseId || undefined;
+                                setEditingDay({...editingDay, exercises: updatedExercises});
+                              }}
+                              placeholder="Search exercises or type custom name..."
+                              showDetails={false}
+                            />
+                          </div>
+                          <div className="flex space-x-1">
+                            {exercise.exerciseId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedExerciseId(exercise.exerciseId!);
+                                  setShowExerciseDetails(true);
+                                }}
+                                title="View exercise details"
+                              >
+                                <Eye size={14} />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const updatedExercises = editingDay.exercises.filter((_, i) => i !== exerciseIndex);
+                                setEditingDay({...editingDay, exercises: updatedExercises});
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
@@ -421,6 +478,16 @@ const CreateRoutine = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Exercise Details Modal */}
+        <ExerciseDetailsModal
+          exerciseId={selectedExerciseId}
+          isOpen={showExerciseDetails}
+          onClose={() => {
+            setShowExerciseDetails(false);
+            setSelectedExerciseId(null);
+          }}
+        />
       </div>
     </Layout>
   );

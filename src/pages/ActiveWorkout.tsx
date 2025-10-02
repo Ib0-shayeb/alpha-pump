@@ -12,6 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { handleWorkoutCompletion } from "@/lib/workoutCompletion";
 import { ShareWorkoutDialog } from "@/components/ShareWorkoutDialog";
+import { ExerciseAutocomplete } from "@/components/ExerciseAutocomplete";
+import { ExerciseDetailsModal } from "@/components/ExerciseDetailsModal";
+import { Eye } from "lucide-react";
 
 interface WorkoutSet {
   id?: string;
@@ -25,6 +28,7 @@ interface WorkoutSet {
 interface WorkoutExercise {
   id?: string;
   name: string;
+  exerciseId?: string;
   sets: WorkoutSet[];
   notes: string;
 }
@@ -41,6 +45,8 @@ const ActiveWorkout = () => {
   const [startTime] = useState(new Date());
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<string | null>(null);
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [showExerciseDetails, setShowExerciseDetails] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -104,6 +110,7 @@ const ActiveWorkout = () => {
   const addExercise = () => {
     setExercises([...exercises, {
       name: '',
+      exerciseId: undefined,
       sets: [{ set_number: 1, weight: '', reps: '', rpe: '', completed: false }],
       notes: ''
     }]);
@@ -269,19 +276,49 @@ const ActiveWorkout = () => {
             <Card key={exerciseIndex} className="p-4 bg-gradient-card shadow-card border-border/50">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Input
-                    value={exercise.name}
-                    onChange={(e) => updateExercise(exerciseIndex, 'name', e.target.value)}
-                    placeholder="Exercise name"
-                    className="text-lg font-medium"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeExercise(exerciseIndex)}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
+                  <div className="flex-1 mr-2">
+                    <ExerciseAutocomplete
+                      value={exercise.name}
+                      onChange={(value) => updateExercise(exerciseIndex, 'name', value)}
+                      onSelect={(selectedExercise) => {
+                        if (selectedExercise) {
+                          updateExercise(exerciseIndex, 'name', selectedExercise.name);
+                          // Auto-fill notes with exercise description if empty
+                          if (!exercise.notes) {
+                            updateExercise(exerciseIndex, 'notes', selectedExercise.description);
+                          }
+                        }
+                      }}
+                      onExerciseIdChange={(exerciseId) => {
+                        updateExercise(exerciseIndex, 'exerciseId', exerciseId || '');
+                      }}
+                      placeholder="Search exercises or type custom name..."
+                      showDetails={false}
+                      className="text-lg font-medium"
+                    />
+                  </div>
+                  <div className="flex space-x-1">
+                    {exercise.exerciseId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedExerciseId(exercise.exerciseId!);
+                          setShowExerciseDetails(true);
+                        }}
+                        title="View exercise details"
+                      >
+                        <Eye size={14} />
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeExercise(exerciseIndex)}
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Sets */}
@@ -391,6 +428,16 @@ const ActiveWorkout = () => {
           workoutName={sessionName}
         />
       )}
+
+      {/* Exercise Details Modal */}
+      <ExerciseDetailsModal
+        exerciseId={selectedExerciseId}
+        isOpen={showExerciseDetails}
+        onClose={() => {
+          setShowExerciseDetails(false);
+          setSelectedExerciseId(null);
+        }}
+      />
     </Layout>
   );
 };

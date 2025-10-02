@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ExerciseAutocomplete } from "@/components/ExerciseAutocomplete";
 
 interface Exercise {
   id: string;
@@ -385,11 +386,20 @@ const CustomWorkout = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="exerciseName">Exercise Name</Label>
-                <Input
-                  id="exerciseName"
+                <ExerciseAutocomplete
                   value={newExerciseName}
-                  onChange={(e) => setNewExerciseName(e.target.value)}
-                  placeholder="e.g., Bench Press, Squats"
+                  onChange={setNewExerciseName}
+                  onSelect={(selectedExercise) => {
+                    if (selectedExercise) {
+                      setNewExerciseName(selectedExercise.name);
+                      // Auto-fill notes with exercise description if empty
+                      if (!newExerciseNotes) {
+                        setNewExerciseNotes(selectedExercise.description);
+                      }
+                    }
+                  }}
+                  placeholder="Search exercises or type custom name..."
+                  showDetails={true}
                 />
               </div>
               <div className="space-y-2">
