@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,17 +22,14 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  console.log('ClientWorkoutCalendar - user:', user?.id, 'currentWeek:', currentWeek);
-  
   const { schedule, routineSchedules, loading, skipDay } = useWorkoutSchedule(user?.id || '', currentWeek);
-  console.log('RoutineSchedules in ClientWorkoutCalendar:', routineSchedules?.length, routineSchedules?.map(r => ({ assignment_id: r.assignment_id, routine_name: r.routine_name })));
 
 
-  const getWeekDays = () => {
+  const getWeekDays = useMemo(() => {
     const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
-  };
+  }, [currentWeek]);
 
   const getScheduleForDay = (date: Date) => {
     return schedule.find(s => 
@@ -170,7 +167,7 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
           <div className="space-y-6">
             {/* Week day header shown once for all rows */}
             <div className="grid grid-cols-7 gap-2">
-              {getWeekDays().map((date) => (
+              {getWeekDays.map((date) => (
                 <div key={`header-${date.toISOString()}`} className="text-center">
                   <div className="text-xs font-medium text-muted-foreground">
                     {format(date, 'EEE')}
@@ -196,7 +193,7 @@ export const ClientWorkoutCalendar = ({ className }: ClientWorkoutCalendarProps)
                   })()}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
-                  {getWeekDays().map((date, index) => {
+                  {getWeekDays.map((date, index) => {
                     const scheduleDay = getScheduleForDayForAssignment(row.assignment_id, date);
                     const { bgColor, icon: Icon, label } = getDayStatus(date, scheduleDay);
 

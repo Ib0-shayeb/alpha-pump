@@ -23,11 +23,8 @@ export const useProfileCompletion = () => {
 
   const fetchProfile = useCallback(async () => {
     if (!user || hasFetched.current) {
-      console.log('Skipping profile fetch - user:', !!user, 'hasFetched:', hasFetched.current);
       return;
     }
-
-    console.log('Starting profile fetch for user:', user.id);
     hasFetched.current = true;
     setLoading(true);
 
@@ -51,14 +48,14 @@ export const useProfileCompletion = () => {
         profile?.activity_level
       );
       setIsComplete(complete);
-      console.log('Profile completion check:', { 
-        profile, 
-        complete,
-        hasDisplayName: !!profile?.display_name,
-        hasUsername: !!profile?.username,
-        hasGoals: !!profile?.fitness_goals?.length,
-        hasActivityLevel: !!profile?.activity_level
-      });
+      // console.log('Profile completion check:', { 
+      //   profile, 
+      //   complete,
+      //   hasDisplayName: !!profile?.display_name,
+      //   hasUsername: !!profile?.username,
+      //   hasGoals: !!profile?.fitness_goals?.length,
+      //   hasActivityLevel: !!profile?.activity_level
+      // });
     } catch (error) {
       console.error('Error fetching profile:', error);
       setIsComplete(false);
@@ -68,7 +65,6 @@ export const useProfileCompletion = () => {
   }, [user]);
 
   useEffect(() => {
-    console.log('useProfileCompletion useEffect triggered - user:', !!user, 'user.id:', user?.id);
     if (user) {
       fetchProfile();
     } else {

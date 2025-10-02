@@ -67,18 +67,12 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    if (clientId && !isFetching) {
-      fetchAndGenerateSchedule();
-    }
-  }, [clientId, weekDate]);
-
-  useEffect(() => {
     // Debounce the fetch to prevent rapid calls
     const timeoutId = setTimeout(() => {
       if (clientId && !isFetching) {
         fetchAndGenerateSchedule();
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [clientId, weekDate]);
@@ -92,7 +86,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       const weekStart = startOfWeek(weekDate, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(weekDate, { weekStartsOn: 1 });
       
-      console.log('Fetching schedule for client:', clientId, 'week:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
+      // console.log('Fetching schedule for client:', clientId, 'week:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
 
       // Add timeout wrapper
       const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
@@ -177,8 +171,8 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         };
       });
       
-      console.log('Fetched assignments:', assignmentsWithRoutines);
-      console.log('Assignments count:', assignmentsWithRoutines.length);
+      // console.log('Fetched assignments:', assignmentsWithRoutines);
+      // console.log('Assignments count:', assignmentsWithRoutines.length);
 
       // Fetch completed workout sessions for the week
       const { data: sessions, error: sessionError } = await withTimeout(
@@ -201,8 +195,7 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
         weekEnd
       );
       
-      console.log('Generated routine schedules count:', routineBasedSchedules.length,
-        routineBasedSchedules.map((r) => ({ assignment_id: r.assignment_id, routine_name: r.routine_name, days: r.schedule.length })));
+      // console.log('Generated routine schedules count:', routineBasedSchedules.length);
       setRoutineSchedules(routineBasedSchedules);
       
       // Keep flat schedule for backward compatibility (first assignment per day)
