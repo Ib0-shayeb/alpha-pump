@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientWorkoutCalendar } from "@/components/ClientWorkoutCalendar";
+import { PRAlert } from "@/components/PRAlert";
 // Removed unused imports for social features
  
 import { endOfWeek, format, startOfWeek } from "date-fns";
@@ -238,8 +239,8 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Social Activity - Removed to avoid 400 errors */}
-
+        {/* Personal Records Alert */}
+        <PRAlert />
 
         {/* Client Workout Calendar */}
         {userRole === 'client' && (

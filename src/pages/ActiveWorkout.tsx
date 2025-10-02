@@ -205,8 +205,8 @@ const ActiveWorkout = () => {
         }
       }
 
-      // Handle flexible plan progression if this is a routine workout
-      await handleWorkoutCompletion(sessionId, routineDay || undefined);
+      // Handle flexible plan progression and PR checking if this is a routine workout
+      await handleWorkoutCompletion(sessionId, routineDay || undefined, user?.id);
 
       toast({
         title: "Workout Complete!",

@@ -27,17 +27,66 @@ export const incrementFlexiblePlanIndex = async (assignmentId: string, routineDa
 };
 
 /**
- * Handles the completion of a routine workout, including flexible plan progression
+ * Checks for personal records in workout exercises
+ * @param userId - The user ID
+ * @param sessionId - The workout session ID
+ */
+export const checkPersonalRecords = async (userId: string, sessionId: string) => {
+  try {
+    // Get all exercises from this workout session
+    const { data: exercises, error: exercisesError } = await supabase
+      .from('workout_exercises')
+      .select('exercise_name, weight, reps')
+      .eq('workout_session_id', sessionId)
+      .not('weight', 'is', null);
+
+    if (exercisesError) throw exercisesError;
+
+    if (!exercises || exercises.length === 0) {
+      return;
+    }
+
+    // Check each exercise for PRs
+    for (const exercise of exercises) {
+      if (exercise.weight && exercise.exercise_name) {
+        const { data: isNewPR, error: prError } = await supabase.rpc('check_and_insert_pr', {
+          p_user_id: userId,
+          p_exercise_name: exercise.exercise_name,
+          p_weight: exercise.weight,
+          p_reps: exercise.reps,
+          p_workout_session_id: sessionId
+        });
+
+        if (prError) {
+          console.error(`Error checking PR for ${exercise.exercise_name}:`, prError);
+        } else if (isNewPR) {
+          console.log(`🎉 New PR: ${exercise.exercise_name} - ${exercise.weight}kg`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking personal records:', error);
+  }
+};
+
+/**
+ * Handles the completion of a routine workout, including flexible plan progression and PR checking
  * @param sessionId - The ID of the completed workout session
  * @param routineDayId - The routine day ID (optional, for routine workouts)
+ * @param userId - The user ID (for PR checking)
  */
-export const handleWorkoutCompletion = async (sessionId: string, routineDayId?: string) => {
-  if (!routineDayId) {
-    // Not a routine workout, no progression needed
-    return;
-  }
-
+export const handleWorkoutCompletion = async (sessionId: string, routineDayId?: string, userId?: string) => {
   try {
+    // Check for personal records first
+    if (userId) {
+      await checkPersonalRecords(userId, sessionId);
+    }
+
+    if (!routineDayId) {
+      // Not a routine workout, no progression needed
+      return;
+    }
+
     // Get the session details to find the routine_id
     const { data: session, error: sessionFetchError } = await supabase
       .from('workout_sessions')

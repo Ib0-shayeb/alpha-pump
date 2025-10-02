@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ExerciseAutocomplete } from "@/components/ExerciseAutocomplete";
+import { checkPersonalRecords } from "@/lib/workoutCompletion";
 
 interface Exercise {
   id: string;
@@ -74,7 +75,7 @@ const CustomWorkout = () => {
   };
 
   const finishWorkout = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !user) return;
     
     try {
       const { error } = await supabase
@@ -83,6 +84,9 @@ const CustomWorkout = () => {
         .eq('id', sessionId);
 
       if (error) throw error;
+      
+      // Check for personal records
+      await checkPersonalRecords(user.id, sessionId);
       
       toast({
         title: "Workout Complete!",
