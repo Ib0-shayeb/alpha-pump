@@ -25,27 +25,103 @@ const StartWorkout = () => {
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
   const { routineSchedules, loading: scheduleLoading } = useWorkoutSchedule(user?.id || '', new Date());
   const [completedTodayIds, setCompletedTodayIds] = useState<Set<string>>(new Set());
+  const [flexiblePlanItems, setFlexiblePlanItems] = useState<TodayWorkoutItem[]>([]);
 
   useEffect(() => {
     if (!user) return;
     if (scheduleLoading) return;
 
-    const items: TodayWorkoutItem[] = (routineSchedules || []).flatMap(rs =>
-      (rs.schedule || [])
-        .filter(d => d.scheduled_date === todayStr && !d.is_rest_day && d.routine_day?.id)
-        .map(d => ({
-          assignment_id: d.assignment_id,
-          routine_id: d.routine_id,
-          routine_name: rs.routine_name,
-          routine_day_id: d.routine_day!.id,
-          routine_day_name: d.routine_day!.name,
-        }))
-    );
+    const items: TodayWorkoutItem[] = (routineSchedules || []).flatMap(rs => {
+      // For flexible plans, show ALL routine days as options
+      // For strict plans, only show today's scheduled workout
+      const todaySchedule = rs.schedule?.find(d => d.scheduled_date === todayStr);
+      
+      if (todaySchedule?.assignment?.plan_type === 'flexible') {
+        // For flexible plans, show all routine days as options
+        // We need to fetch all routine days for this routine
+        return [];
+      } else {
+        // For strict plans, only show today's scheduled workout
+        return (rs.schedule || [])
+          .filter(d => d.scheduled_date === todayStr && !d.is_rest_day && d.routine_day?.id)
+          .map(d => ({
+            assignment_id: d.assignment_id,
+            routine_id: d.routine_id,
+            routine_name: rs.routine_name,
+            routine_day_id: d.routine_day!.id,
+            routine_day_name: d.routine_day!.name,
+          }));
+      }
+    });
 
     // Exclude completed/started today by routine_day_id
     const filtered = items.filter(i => !completedTodayIds.has(i.routine_day_id));
     setTodayItems(filtered);
     setLoading(false);
+  }, [user, routineSchedules, scheduleLoading, todayStr, completedTodayIds]);
+
+  // Fetch flexible plan routine days
+  useEffect(() => {
+    const fetchFlexiblePlanItems = async () => {
+      if (!user || scheduleLoading) return;
+
+      try {
+        // Get all flexible plan assignments
+        const flexibleAssignments = routineSchedules?.filter(rs => {
+          const todaySchedule = rs.schedule?.find(d => d.scheduled_date === todayStr);
+          return todaySchedule?.assignment?.plan_type === 'flexible';
+        }) || [];
+
+        if (flexibleAssignments.length === 0) {
+          setFlexiblePlanItems([]);
+          return;
+        }
+
+        // Fetch all routine days for flexible plans
+        const routineIds = flexibleAssignments.map(rs => {
+          const todaySchedule = rs.schedule?.find(d => d.scheduled_date === todayStr);
+          return todaySchedule?.routine_id;
+        }).filter(Boolean);
+
+        const { data: routineDays, error } = await supabase
+          .from('routine_days')
+          .select(`
+            id,
+            name,
+            description,
+            routine_id,
+            workout_routines!inner(name)
+          `)
+          .in('routine_id', routineIds)
+          .order('routine_id, day_number');
+
+        if (error) throw error;
+
+        // Create workout items for each routine day
+        const items: TodayWorkoutItem[] = routineDays.map(rd => {
+          const assignment = flexibleAssignments.find(rs => 
+            rs.schedule?.some(d => d.routine_id === rd.routine_id)
+          );
+          
+          return {
+            assignment_id: assignment?.assignment_id || '',
+            routine_id: rd.routine_id,
+            routine_name: rd.workout_routines.name,
+            routine_day_id: rd.id,
+            routine_day_name: rd.name,
+          };
+        });
+
+        // Exclude completed/started today by routine_day_id
+        const filtered = items.filter(i => !completedTodayIds.has(i.routine_day_id));
+        setFlexiblePlanItems(filtered);
+      } catch (error) {
+        console.error('Error fetching flexible plan items:', error);
+        setFlexiblePlanItems([]);
+      }
+    };
+
+    fetchFlexiblePlanItems();
   }, [user, routineSchedules, scheduleLoading, todayStr, completedTodayIds]);
 
   // Fetch today's sessions and exclude those routine_day_ids
@@ -76,9 +152,10 @@ const StartWorkout = () => {
 
   useEffect(() => {
     const fetchCounts = async () => {
-      if (todayItems.length === 0) return;
+      const allItems = [...todayItems, ...flexiblePlanItems];
+      if (allItems.length === 0) return;
       try {
-        const ids = todayItems.map(i => i.routine_day_id);
+        const ids = allItems.map(i => i.routine_day_id);
         const { data, error } = await supabase
           .from('routine_exercises')
           .select('routine_day_id, id')
@@ -89,12 +166,13 @@ const StartWorkout = () => {
           counts.set(row.routine_day_id, (counts.get(row.routine_day_id) || 0) + 1);
         });
         setTodayItems(prev => prev.map(p => ({ ...p, exercises_count: counts.get(p.routine_day_id) || 0 })));
+        setFlexiblePlanItems(prev => prev.map(p => ({ ...p, exercises_count: counts.get(p.routine_day_id) || 0 })));
       } catch (err) {
         console.error('Failed to fetch exercise counts', err);
       }
     };
     fetchCounts();
-  }, [todayItems.length]);
+  }, [todayItems.length, flexiblePlanItems.length]);
 
   const startWorkout = async (item: TodayWorkoutItem) => {
     if (!user) return;
@@ -143,8 +221,9 @@ const StartWorkout = () => {
                 <div className="h-3 bg-muted rounded w-1/3"></div>
               </div>
             </Card>
-          ) : todayItems.length > 0 ? (
+          ) : (todayItems.length > 0 || flexiblePlanItems.length > 0) ? (
             <div className="space-y-3">
+              {/* Strict plan workouts */}
               {todayItems.map(item => (
                 <Card key={`${item.assignment_id}-${item.routine_day_id}`} className="p-6 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200">
                   <div className="flex items-center justify-between">
@@ -152,6 +231,33 @@ const StartWorkout = () => {
                       <h4 className="font-medium text-lg mb-1">{item.routine_day_name}</h4>
                       <p className="text-sm text-muted-foreground mb-2">
                         From {item.routine_name}
+                      </p>
+                      {typeof item.exercises_count === 'number' && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Dumbbell size={14} className="mr-1" />
+                          <span>{item.exercises_count} exercises</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      className="bg-gradient-primary hover:shadow-primary"
+                      onClick={() => startWorkout(item)}
+                    >
+                      <Play size={16} className="mr-2" />
+                      Start Workout
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+              
+              {/* Flexible plan workouts */}
+              {flexiblePlanItems.map(item => (
+                <Card key={`flexible-${item.assignment_id}-${item.routine_day_id}`} className="p-6 bg-gradient-card shadow-card border-border/50 hover:shadow-primary/20 transition-all duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-lg mb-1">{item.routine_day_name}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        From {item.routine_name} (Flexible Plan)
                       </p>
                       {typeof item.exercises_count === 'number' && (
                         <div className="flex items-center text-sm text-muted-foreground">

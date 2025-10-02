@@ -64,34 +64,62 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [routineSchedules, setRoutineSchedules] = useState<RoutineSchedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && !isFetching) {
       fetchAndGenerateSchedule();
     }
   }, [clientId, weekDate]);
 
+  useEffect(() => {
+    // Debounce the fetch to prevent rapid calls
+    const timeoutId = setTimeout(() => {
+      if (clientId && !isFetching) {
+        fetchAndGenerateSchedule();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [clientId, weekDate]);
+
   const fetchAndGenerateSchedule = async () => {
+    if (isFetching) return; // Prevent concurrent calls
+    
     setLoading(true);
+    setIsFetching(true);
     try {
       const weekStart = startOfWeek(weekDate, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(weekDate, { weekStartsOn: 1 });
       
       console.log('Fetching schedule for client:', clientId, 'week:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
 
+      // Add timeout wrapper
+      const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Query timeout')), timeoutMs)
+          )
+        ]);
+      };
+
       // Fetch active assignments first (simpler query)
-      const { data: assignments, error: assignmentError } = await supabase
-        .from('client_routine_assignments')
-        .select(`
-          id,
-          routine_id,
-          plan_type,
-          start_date,
-          is_active,
-          current_day_index
-        `)
-        .eq('client_id', clientId)
-        .eq('is_active', true);
+      const { data: assignments, error: assignmentError } = await withTimeout(
+        supabase
+          .from('client_routine_assignments')
+          .select(`
+            id,
+            routine_id,
+            plan_type,
+            start_date,
+            is_active,
+            current_day_index
+          `)
+          .eq('client_id', clientId)
+          .eq('is_active', true),
+        10000 // 10 second timeout
+      );
 
       if (assignmentError) throw assignmentError;
       
@@ -103,29 +131,35 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
 
       // Fetch routine data separately
       const routineIds = assignments.map(a => a.routine_id);
-      const { data: routines, error: routineError } = await supabase
-        .from('workout_routines')
-        .select(`
-          id,
-          name,
-          days_per_week
-        `)
-        .in('id', routineIds);
+      const { data: routines, error: routineError } = await withTimeout(
+        supabase
+          .from('workout_routines')
+          .select(`
+            id,
+            name,
+            days_per_week
+          `)
+          .in('id', routineIds),
+        10000 // 10 second timeout
+      );
 
       if (routineError) throw routineError;
 
-      // Fetch routine days separately
-      const { data: routineDays, error: daysError } = await supabase
-        .from('routine_days')
-        .select(`
-          id,
-          routine_id,
-          name,
-          description,
-          day_number
-        `)
-        .in('routine_id', routineIds)
-        .order('routine_id, day_number');
+      // Fetch routine days separately with timeout
+      const { data: routineDays, error: daysError } = await withTimeout(
+        supabase
+          .from('routine_days')
+          .select(`
+            id,
+            routine_id,
+            name,
+            description,
+            day_number
+          `)
+          .in('routine_id', routineIds)
+          .order('routine_id, day_number'),
+        15000 // 15 second timeout for this query
+      );
 
       if (daysError) throw daysError;
 
@@ -147,12 +181,15 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       console.log('Assignments count:', assignmentsWithRoutines.length);
 
       // Fetch completed workout sessions for the week
-      const { data: sessions, error: sessionError } = await supabase
-        .from('workout_sessions')
-        .select('id, name, start_time, routine_day_id, routine_id')
-        .eq('user_id', clientId)
-        .gte('start_time', format(weekStart, 'yyyy-MM-dd'))
-        .lte('start_time', format(weekEnd, 'yyyy-MM-dd 23:59:59'));
+      const { data: sessions, error: sessionError } = await withTimeout(
+        supabase
+          .from('workout_sessions')
+          .select('id, name, start_time, routine_day_id, routine_id')
+          .eq('user_id', clientId)
+          .gte('start_time', format(weekStart, 'yyyy-MM-dd'))
+          .lte('start_time', format(weekEnd, 'yyyy-MM-dd 23:59:59')),
+        10000 // 10 second timeout
+      );
 
       if (sessionError) throw sessionError;
 
@@ -171,11 +208,15 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
       // Keep flat schedule for backward compatibility (first assignment per day)
       const flatSchedule = routineBasedSchedules.flatMap(row => row.schedule);
       setSchedule(flatSchedule);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching schedule data:', error);
+      if (error.message === 'Query timeout') {
+        console.error('Query timed out - this may be due to database performance issues');
+      }
       setSchedule([]);
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
   };
 
@@ -186,7 +227,9 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
     console.log('Skip day requested:', date, assignmentId);
     
     // Refresh schedule to recompute based on current data
-    fetchAndGenerateSchedule();
+    if (!isFetching) {
+      fetchAndGenerateSchedule();
+    }
   };
 
   const generateRoutineSchedules = (
@@ -233,11 +276,11 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               shouldHaveWorkout = !!expectedRoutineDay;
             }
           } else {
-            // Flexible plan: For now, treat as rest day since we don't have current_day_index
+            // Flexible plan: Should have workout today
             const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             
             expectedRoutineDay = routineDays[assignment.current_day_index + daysAfterToday % routineDays.length];
-            shouldHaveWorkout = false;
+            shouldHaveWorkout = true;
           }
 
           // Check if there's a completed workout session for this day and assignment
@@ -340,45 +383,26 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
               };
             }
           } else {
-            if(shouldHaveWorkout && !completedSession){
-              if(assignment.plan_type === 'flexible'){
-                const daysAfterToday = Math.floor((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                const expectedRoutineDayIndex = assignment.current_day_index + daysAfterToday % routineDays.length;
-                expectedRoutineDay = routineDays[expectedRoutineDayIndex];
-
-                daySchedule = {
-                  id: `${assignment.id}-${dateStr}`,
-                  assignment_id: assignment.id,
-                  routine_id: assignment.routine_id,
-                  scheduled_date: dateStr,
-                  is_rest_day: false,
-                  is_completed: false,
-                  was_skipped: false,
-                  routine_day: {
-                    id: expectedRoutineDay.id,
-                    name: expectedRoutineDay.name,
-                    description: expectedRoutineDay.description
-                  },
-                  assignment: { plan_type: assignment.plan_type }
-                };
-              } else {//strict plan
-                daySchedule = {
-                  id: `${assignment.id}-${dateStr}`,
-                  assignment_id: assignment.id,
-                  routine_id: assignment.routine_id,
-                  scheduled_date: dateStr,
-                  is_rest_day: false,
-                  is_completed: false,
-                  was_skipped: false,
-                  routine_day: {
-                    id: expectedRoutineDay.id,
-                    name: expectedRoutineDay.name,
-                    description: expectedRoutineDay.description
-                  },
-                  assignment: { plan_type: assignment.plan_type }
-                };
-              }
-            } else if(completedSession){
+            // Today's date - currentDate === today
+            if (shouldHaveWorkout && !completedSession) {
+              // Should have workout today and hasn't completed it yet
+              daySchedule = {
+                id: `${assignment.id}-${dateStr}`,
+                assignment_id: assignment.id,
+                routine_id: assignment.routine_id,
+                scheduled_date: dateStr,
+                is_rest_day: false,
+                is_completed: false,
+                was_skipped: false,
+                routine_day: {
+                  id: expectedRoutineDay.id,
+                  name: expectedRoutineDay.name,
+                  description: expectedRoutineDay.description
+                },
+                assignment: { plan_type: assignment.plan_type }
+              };
+            } else if (completedSession) {
+              // Has completed workout today
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
@@ -387,17 +411,18 @@ export const useWorkoutSchedule = (clientId: string, weekDate: Date) => {
                 is_rest_day: false,
                 is_completed: true,
                 was_skipped: false,
-                routine_day: completedSession ? {
+                routine_day: {
                   id: completedSession.routine_day_id!,
                   name: completedSession.name
-                } : undefined,
-                workout_session: completedSession ? {
+                },
+                workout_session: {
                   id: completedSession.id,
                   name: completedSession.name
-                } : undefined,
+                },
                 assignment: { plan_type: assignment.plan_type }
               };
             } else {
+              // Rest day today
               daySchedule = {
                 id: `${assignment.id}-${dateStr}`,
                 assignment_id: assignment.id,
