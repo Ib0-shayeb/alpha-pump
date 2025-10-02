@@ -14,11 +14,19 @@ const AuthWrapper = ({ children }: AuthWrapperProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Allow access to auth and email confirmation pages without authentication
+  const isPublicRoute = location.pathname === "/auth" || location.pathname === "/confirm-email";
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isPublicRoute) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, isPublicRoute]);
+
+  // For public routes, just render children
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
   if (loading || profileLoading) {
     return (
@@ -33,7 +41,7 @@ const AuthWrapper = ({ children }: AuthWrapperProps) => {
   }
 
   // Show profile completion form if profile is incomplete (but not while still loading)
-  if (!profileLoading && !isComplete && location.pathname !== "/auth") {
+  if (!profileLoading && !isComplete) {
     return <ProfileCompletionForm onComplete={markComplete} />;
   }
 

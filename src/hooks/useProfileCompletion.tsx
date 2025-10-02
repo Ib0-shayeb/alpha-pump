@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -19,17 +19,17 @@ export const useProfileCompletion = () => {
   const [loading, setLoading] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
   const { user } = useAuth();
+  const hasFetched = useRef(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    } else {
-      setLoading(false);
+  const fetchProfile = useCallback(async () => {
+    if (!user || hasFetched.current) {
+      console.log('Skipping profile fetch - user:', !!user, 'hasFetched:', hasFetched.current);
+      return;
     }
-  }, [user]);
 
-  const fetchProfile = async () => {
-    if (!user) return;
+    console.log('Starting profile fetch for user:', user.id);
+    hasFetched.current = true;
+    setLoading(true);
 
     try {
       const { data: profile, error } = await supabase
@@ -65,17 +65,32 @@ export const useProfileCompletion = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    console.log('useProfileCompletion useEffect triggered - user:', !!user, 'user.id:', user?.id);
+    if (user) {
+      fetchProfile();
+    } else {
+      setLoading(false);
+      hasFetched.current = false;
+    }
+  }, [user, fetchProfile]);
 
   const markComplete = () => {
     setIsComplete(true);
   };
+
+  const refetch = useCallback(() => {
+    hasFetched.current = false;
+    fetchProfile();
+  }, [fetchProfile]);
 
   return {
     profile,
     loading,
     isComplete,
     markComplete,
-    refetch: fetchProfile
+    refetch
   };
 };
