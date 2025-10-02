@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Play, Clock, CheckCircle, Share2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -348,21 +348,21 @@ const ActiveWorkout = () => {
                     <div key={setIndex} className="grid grid-cols-6 gap-2 p-2 bg-muted/30 rounded items-center">
                       <div className="text-sm text-muted-foreground">#{set.set_number}</div>
                       <Input
-                        value={set.weight}
+                        value={set.weight || ""}
                         onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
                         placeholder="kg"
                         className="text-sm"
                         type="number"
                       />
                       <Input
-                        value={set.reps}
+                        value={set.reps || ""}
                         onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
                         placeholder="reps"
                         className="text-sm"
                         type="number"
                       />
                       <Input
-                        value={set.rpe}
+                        value={set.rpe || ""}
                         onChange={(e) => updateSet(exerciseIndex, setIndex, 'rpe', e.target.value)}
                         placeholder="1-10"
                         className="text-sm"

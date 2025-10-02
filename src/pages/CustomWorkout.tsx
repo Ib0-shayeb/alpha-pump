@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Play, ArrowLeft, Trash2, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,8 @@ const CustomWorkout = () => {
   
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // No longer needed - we save to database only when workout is finished
 
   const startWorkout = async () => {
     if (!user) return;
@@ -78,6 +80,28 @@ const CustomWorkout = () => {
     if (!sessionId || !user) return;
     
     try {
+      // First, save all set data to database
+      for (const exercise of exercises) {
+        for (const set of exercise.sets) {
+          if (set.id) {
+            const { error } = await supabase
+              .from('workout_sets')
+              .update({
+                weight: set.weight,
+                reps: set.reps,
+                rpe: set.rpe,
+                completed: set.completed
+              })
+              .eq('id', set.id);
+
+            if (error) {
+              console.error(`Error updating set ${set.id}:`, error);
+            }
+          }
+        }
+      }
+
+      // Then finish the workout session
       const { error } = await supabase
         .from('workout_sessions')
         .update({ end_time: new Date().toISOString() })
@@ -191,34 +215,20 @@ const CustomWorkout = () => {
     }
   };
 
-  const updateSet = async (exerciseId: string, setId: string, updates: Partial<WorkoutSet>) => {
-    try {
-      const { error } = await supabase
-        .from('workout_sets')
-        .update({
-          weight: updates.weight,
-          reps: updates.reps,
-          rpe: updates.rpe,
-          completed: updates.completed
-        })
-        .eq('id', setId);
-
-      if (error) throw error;
-      
-      setExercises(exercises.map(ex => 
-        ex.id === exerciseId 
-          ? {
-              ...ex,
-              sets: ex.sets.map(set => 
-                set.id === setId ? { ...set, ...updates } : set
-              )
-            }
-          : ex
-      ));
-    } catch (error) {
-      console.error('Error updating set:', error);
-    }
-  };
+  // Update UI immediately, save to database when workout is finished
+  const updateSet = useCallback((exerciseId: string, setId: string, updates: Partial<WorkoutSet>) => {
+    // Update UI immediately
+    setExercises(prev => prev.map(ex => 
+      ex.id === exerciseId 
+        ? {
+            ...ex,
+            sets: ex.sets.map(set => 
+              set.id === setId ? { ...set, ...updates } : set
+            )
+          }
+        : ex
+    ));
+  }, []);
 
   const removeExercise = async (exerciseId: string) => {
     try {
@@ -330,7 +340,7 @@ const CustomWorkout = () => {
                             <Input
                               type="number"
                               placeholder="Weight"
-                              value={set.weight || ""}
+                              value={set.weight?.toString() || ""}
                               onChange={(e) => updateSet(exercise.id, set.id, { 
                                 weight: e.target.value ? parseFloat(e.target.value) : null 
                               })}
@@ -338,7 +348,7 @@ const CustomWorkout = () => {
                             <Input
                               type="number"
                               placeholder="Reps"
-                              value={set.reps || ""}
+                              value={set.reps?.toString() || ""}
                               onChange={(e) => updateSet(exercise.id, set.id, { 
                                 reps: e.target.value ? parseInt(e.target.value) : null 
                               })}
@@ -348,7 +358,7 @@ const CustomWorkout = () => {
                               placeholder="RPE"
                               min="1"
                               max="10"
-                              value={set.rpe || ""}
+                              value={set.rpe?.toString() || ""}
                               onChange={(e) => updateSet(exercise.id, set.id, { 
                                 rpe: e.target.value ? parseInt(e.target.value) : null 
                               })}
