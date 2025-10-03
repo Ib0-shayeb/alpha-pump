@@ -33,6 +33,8 @@ export const incrementFlexiblePlanIndex = async (assignmentId: string, routineDa
  */
 export const checkPersonalRecords = async (userId: string, sessionId: string) => {
   try {
+    console.log('PR Check: Starting PR check for user:', userId, 'session:', sessionId);
+    
     // Get all exercises from this workout session
     const { data: exercises, error: exercisesError } = await supabase
       .from('workout_exercises')
@@ -40,15 +42,23 @@ export const checkPersonalRecords = async (userId: string, sessionId: string) =>
       .eq('workout_session_id', sessionId)
       .not('weight', 'is', null);
 
-    if (exercisesError) throw exercisesError;
+    if (exercisesError) {
+      console.error('PR Check: Error fetching exercises:', exercisesError);
+      throw exercisesError;
+    }
+
+    console.log('PR Check: Found exercises:', exercises);
 
     if (!exercises || exercises.length === 0) {
+      console.log('PR Check: No exercises with weight found');
       return;
     }
 
     // Check each exercise for PRs
     for (const exercise of exercises) {
       if (exercise.weight && exercise.exercise_name) {
+        console.log(`PR Check: Checking PR for ${exercise.exercise_name} - ${exercise.weight}kg`);
+        
         const { data: isNewPR, error: prError } = await supabase.rpc('check_and_insert_pr', {
           p_user_id: userId,
           p_exercise_name: exercise.exercise_name,
@@ -58,14 +68,16 @@ export const checkPersonalRecords = async (userId: string, sessionId: string) =>
         });
 
         if (prError) {
-          console.error(`Error checking PR for ${exercise.exercise_name}:`, prError);
+          console.error(`PR Check: Error checking PR for ${exercise.exercise_name}:`, prError);
         } else if (isNewPR) {
-          console.log(`🎉 New PR: ${exercise.exercise_name} - ${exercise.weight}kg`);
+          console.log(`🎉 PR Check: New PR: ${exercise.exercise_name} - ${exercise.weight}kg`);
+        } else {
+          console.log(`PR Check: No new PR for ${exercise.exercise_name} - ${exercise.weight}kg`);
         }
       }
     }
   } catch (error) {
-    console.error('Error checking personal records:', error);
+    console.error('PR Check: Error checking personal records:', error);
   }
 };
 

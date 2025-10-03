@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientWorkoutCalendar } from "@/components/ClientWorkoutCalendar";
 import { PRAlert } from "@/components/PRAlert";
+import { PRTestButton } from "@/components/PRTestButton";
 // Removed unused imports for social features
  
 import { endOfWeek, format, startOfWeek } from "date-fns";
@@ -240,7 +241,12 @@ const Dashboard = () => {
         </div>
 
         {/* Personal Records Alert */}
-        <PRAlert />
+        <div className="space-y-4">
+          <PRAlert />
+          <div className="flex justify-center">
+            <PRTestButton />
+          </div>
+        </div>
 
         {/* Client Workout Calendar */}
         {userRole === 'client' && (

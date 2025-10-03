@@ -33,6 +33,7 @@ export const PRAlert = () => {
     
     try {
       setLoading(true);
+      console.log('PRAlert: Fetching PRs for user:', user.id);
       const { data, error } = await supabase
         .from('personal_records')
         .select('*')
@@ -40,7 +41,12 @@ export const PRAlert = () => {
         .order('achieved_at', { ascending: false })
         .limit(5);
 
-      if (error) throw error;
+      if (error) {
+        console.error('PRAlert: Error fetching PRs:', error);
+        throw error;
+      }
+      
+      console.log('PRAlert: Fetched PRs:', data);
       setRecentPRs(data || []);
     } catch (error) {
       console.error('Error fetching recent PRs:', error);
